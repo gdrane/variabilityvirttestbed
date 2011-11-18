@@ -177,8 +177,6 @@ qemu_irq *armv7m_init(int flash_size, int sram_size,
     flash_size *= 1024;
     sram_size *= 1024;
 
-	fprintf(stderr, "Initializing arm architecture\n");
-	fprintf(stderr, "Cpu Model is %s \n", cpu_model);
     if (!cpu_model)
 	cpu_model = "cortex-m3";
     env = cpu_init(cpu_model);

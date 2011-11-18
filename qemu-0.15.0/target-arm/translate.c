@@ -142,6 +142,7 @@ static inline TCGv load_cpu_offset(int offset)
 
 static inline void store_cpu_offset(TCGv var, int offset)
 {
+	printf("Store Cpu Offset instruction executed\n");
     tcg_gen_st_i32(var, cpu_env, offset);
     tcg_temp_free_i32(var);
 }
@@ -152,6 +153,7 @@ static inline void store_cpu_offset(TCGv var, int offset)
 /* Set a variable to the value of a CPU register.  */
 static void load_reg_var(DisasContext *s, TCGv var, int reg)
 {
+	printf("Load Reg instruction executed\n");
     if (reg == 15) {
         uint32_t addr;
         /* normaly, since we updated PC, we need only to add one insn */
@@ -168,6 +170,7 @@ static void load_reg_var(DisasContext *s, TCGv var, int reg)
 /* Create a new temporary and set it to the value of a CPU register.  */
 static inline TCGv load_reg(DisasContext *s, int reg)
 {
+	printf("Load reg instruction executed\n");
     TCGv tmp = tcg_temp_new_i32();
     load_reg_var(s, tmp, reg);
     return tmp;
@@ -177,6 +180,7 @@ static inline TCGv load_reg(DisasContext *s, int reg)
    marked as dead.  */
 static void store_reg(DisasContext *s, int reg, TCGv var)
 {
+	printf("Store Reg instruction executed\n");
     if (reg == 15) {
         tcg_gen_andi_i32(var, var, ~1);
         s->is_jmp = DISAS_JUMP;
@@ -197,6 +201,7 @@ static void store_reg(DisasContext *s, int reg, TCGv var)
 
 static inline void gen_set_cpsr(TCGv var, uint32_t mask)
 {
+	printf("Set CPSR instruction executed\n");
     TCGv tmp_mask = tcg_const_i32(mask);
     gen_helper_cpsr_write(var, tmp_mask);
     tcg_temp_free_i32(tmp_mask);
@@ -206,6 +211,7 @@ static inline void gen_set_cpsr(TCGv var, uint32_t mask)
 
 static void gen_exception(int excp)
 {
+	printf("Generate exception\n");
     TCGv tmp = tcg_temp_new_i32();
     tcg_gen_movi_i32(tmp, excp);
     gen_helper_exception(tmp);
@@ -214,6 +220,7 @@ static void gen_exception(int excp)
 
 static void gen_smul_dual(TCGv a, TCGv b)
 {
+	printf("Generate mul dual\n");
     TCGv tmp1 = tcg_temp_new_i32();
     TCGv tmp2 = tcg_temp_new_i32();
     tcg_gen_ext16s_i32(tmp1, a);
@@ -230,6 +237,7 @@ static void gen_smul_dual(TCGv a, TCGv b)
 /* Byteswap each halfword.  */
 static void gen_rev16(TCGv var)
 {
+	printf("REverse 16\n");
     TCGv tmp = tcg_temp_new_i32();
     tcg_gen_shri_i32(tmp, var, 8);
     tcg_gen_andi_i32(tmp, tmp, 0x00ff00ff);
@@ -242,6 +250,7 @@ static void gen_rev16(TCGv var)
 /* Byteswap low halfword and sign extend.  */
 static void gen_revsh(TCGv var)
 {
+	printf("Reverse halfword\n");
     tcg_gen_ext16u_i32(var, var);
     tcg_gen_bswap16_i32(var, var);
     tcg_gen_ext16s_i32(var, var);
@@ -250,6 +259,7 @@ static void gen_revsh(TCGv var)
 /* Unsigned bitfield extract.  */
 static void gen_ubfx(TCGv var, int shift, uint32_t mask)
 {
+	printf("UBFX\n");
     if (shift)
         tcg_gen_shri_i32(var, var, shift);
     tcg_gen_andi_i32(var, var, mask);
@@ -258,6 +268,7 @@ static void gen_ubfx(TCGv var, int shift, uint32_t mask)
 /* Signed bitfield extract.  */
 static void gen_sbfx(TCGv var, int shift, int width)
 {
+	printf("SBFX\n");
     uint32_t signbit;
 
     if (shift)
@@ -273,6 +284,7 @@ static void gen_sbfx(TCGv var, int shift, int width)
 /* Bitfield insertion.  Insert val into base.  Clobbers base and val.  */
 static void gen_bfi(TCGv dest, TCGv base, TCGv val, int shift, uint32_t mask)
 {
+	printf("BFI\n");
     tcg_gen_andi_i32(val, val, mask);
     tcg_gen_shli_i32(val, val, shift);
     tcg_gen_andi_i32(base, base, ~(mask << shift));
@@ -282,6 +294,7 @@ static void gen_bfi(TCGv dest, TCGv base, TCGv val, int shift, uint32_t mask)
 /* Return (b << 32) + a. Mark inputs as dead */
 static TCGv_i64 gen_addq_msw(TCGv_i64 a, TCGv b)
 {
+	printf("addq_msw");
     TCGv_i64 tmp64 = tcg_temp_new_i64();
 
     tcg_gen_extu_i32_i64(tmp64, b);
@@ -357,6 +370,7 @@ static void gen_swap_half(TCGv var)
 
 static void gen_add16(TCGv t0, TCGv t1)
 {
+	printf("Add 16 instruction executed\n");
     TCGv tmp = tcg_temp_new_i32();
     tcg_gen_xor_i32(tmp, t0, t1);
     tcg_gen_andi_i32(tmp, tmp, 0x8000);
@@ -373,6 +387,7 @@ static void gen_add16(TCGv t0, TCGv t1)
 /* Set CF to the top bit of var.  */
 static void gen_set_CF_bit31(TCGv var)
 {
+	printf("set CF bit\n");
     TCGv tmp = tcg_temp_new_i32();
     tcg_gen_shri_i32(tmp, var, 31);
     gen_set_CF(tmp);
@@ -389,6 +404,7 @@ static inline void gen_logic_CC(TCGv var)
 /* T0 += T1 + CF.  */
 static void gen_adc(TCGv t0, TCGv t1)
 {
+	printf("Add with carry\n");
     TCGv tmp;
     tcg_gen_add_i32(t0, t0, t1);
     tmp = load_cpu_field(CF);
@@ -399,6 +415,7 @@ static void gen_adc(TCGv t0, TCGv t1)
 /* dest = T0 + T1 + CF. */
 static void gen_add_carry(TCGv dest, TCGv t0, TCGv t1)
 {
+	printf("Store instruction executed\n");
     TCGv tmp;
     tcg_gen_add_i32(dest, t0, t1);
     tmp = load_cpu_field(CF);
@@ -409,6 +426,7 @@ static void gen_add_carry(TCGv dest, TCGv t0, TCGv t1)
 /* dest = T0 - T1 + CF - 1.  */
 static void gen_sub_carry(TCGv dest, TCGv t0, TCGv t1)
 {
+	printf("Subtract w carry instruction executed\n");
     TCGv tmp;
     tcg_gen_sub_i32(dest, t0, t1);
     tmp = load_cpu_field(CF);
@@ -422,6 +440,7 @@ static void gen_sub_carry(TCGv dest, TCGv t0, TCGv t1)
 
 static void shifter_out_im(TCGv var, int shift)
 {
+	printf("shift out immediate\n");
     TCGv tmp = tcg_temp_new_i32();
     if (shift == 0) {
         tcg_gen_andi_i32(tmp, var, 1);
@@ -437,6 +456,7 @@ static void shifter_out_im(TCGv var, int shift)
 /* Shift by immediate.  Includes special handling for shift == 0.  */
 static inline void gen_arm_shift_im(TCGv var, int shiftop, int shift, int flags)
 {
+	printf("shift immediat\n");
     switch (shiftop) {
     case 0: /* LSL */
         if (shift != 0) {
@@ -487,6 +507,7 @@ static inline void gen_arm_shift_im(TCGv var, int shiftop, int shift, int flags)
 static inline void gen_arm_shift_reg(TCGv var, int shiftop,
                                      TCGv shift, int flags)
 {
+	printf("Shift register\n");
     if (flags) {
         switch (shiftop) {
         case 0: gen_helper_shl_cc(var, var, shift); break;
@@ -517,6 +538,7 @@ static inline void gen_arm_shift_reg(TCGv var, int shiftop,
     }
 static void gen_arm_parallel_addsub(int op1, int op2, TCGv a, TCGv b)
 {
+	printf("parallel add sub\n");
     TCGv_ptr tmp;
 
     switch (op1) {
@@ -601,6 +623,7 @@ static void gen_thumb2_parallel_addsub(int op1, int op2, TCGv a, TCGv b)
 
 static void gen_test_cc(int cc, int label)
 {
+	printf("test cc\n");
     TCGv tmp;
     TCGv tmp2;
     int inv;
@@ -719,6 +742,7 @@ static const uint8_t table_logic_cc[16] = {
 /* Set PC and Thumb state from an immediate address.  */
 static inline void gen_bx_im(DisasContext *s, uint32_t addr)
 {
+	printf("bx immediate\n");
     TCGv tmp;
 
     s->is_jmp = DISAS_UPDATE;
@@ -734,6 +758,7 @@ static inline void gen_bx_im(DisasContext *s, uint32_t addr)
 /* Set PC and Thumb state from var.  var is marked as dead.  */
 static inline void gen_bx(DisasContext *s, TCGv var)
 {
+	printf("bx\n");
     s->is_jmp = DISAS_UPDATE;
     tcg_gen_andi_i32(cpu_R[15], var, ~1);
     tcg_gen_andi_i32(var, var, 1);
@@ -746,6 +771,7 @@ static inline void gen_bx(DisasContext *s, TCGv var)
 static inline void store_reg_bx(CPUState *env, DisasContext *s,
                                 int reg, TCGv var)
 {
+	printf("Store register bx\n");
     if (reg == 15 && ENABLE_ARCH_7) {
         gen_bx(s, var);
     } else {
@@ -832,7 +858,8 @@ static inline void gen_set_pc_im(uint32_t val)
 /* Force a TB lookup after an instruction that changes the CPU state.  */
 static inline void gen_lookup_tb(DisasContext *s)
 {
-    tcg_gen_movi_i32(cpu_R[15], s->pc & ~1);
+    printf("Lookup tb\n");
+	tcg_gen_movi_i32(cpu_R[15], s->pc & ~1);
     s->is_jmp = DISAS_UPDATE;
 }
 
@@ -867,7 +894,8 @@ static inline void gen_add_data_offset(DisasContext *s, unsigned int insn,
 static inline void gen_add_datah_offset(DisasContext *s, unsigned int insn,
                                         int extra, TCGv var)
 {
-    int val, rm;
+    printf("Add data high offset\n");
+	int val, rm;
     TCGv offset;
 
     if (insn & (1 << 22)) {
@@ -1121,6 +1149,7 @@ static inline void neon_store_reg64(TCGv_i64 var, int reg)
 
 static inline void gen_mov_F0_vreg(int dp, int reg)
 {
+	printf("MOve f0 vreg\n");
     if (dp)
         tcg_gen_ld_f64(cpu_F0d, cpu_env, vfp_reg_offset(dp, reg));
     else
@@ -1164,6 +1193,7 @@ static inline TCGv iwmmxt_load_creg(int reg)
 
 static inline void iwmmxt_store_creg(int reg, TCGv var)
 {
+	printf("Store wmmxt creg\n");
     tcg_gen_st_i32(var, cpu_env, offsetof(CPUState, iwmmxt.cregs[reg]));
     tcg_temp_free_i32(var);
 }
@@ -3512,6 +3542,7 @@ static inline void gen_goto_tb(DisasContext *s, int n, uint32_t dest)
 
 static inline void gen_jmp (DisasContext *s, uint32_t dest)
 {
+	printf("Jump instruction\n");
     if (unlikely(s->singlestep_enabled)) {
         /* An indirect jump so that we still trigger the debug exception.  */
         if (s->thumb)
@@ -3525,6 +3556,7 @@ static inline void gen_jmp (DisasContext *s, uint32_t dest)
 
 static inline void gen_mulxy(TCGv t0, TCGv t1, int x, int y)
 {
+	printf("Multiply\n");
     if (x)
         tcg_gen_sari_i32(t0, t0, 16);
     else
@@ -6453,6 +6485,7 @@ static int disas_coproc_insn(CPUState * env, DisasContext *s, uint32_t insn)
 /* Store a 64-bit value to a register pair.  Clobbers val.  */
 static void gen_storeq_reg(DisasContext *s, int rlow, int rhigh, TCGv_i64 val)
 {
+	printf("Store 64bit value to register pair\n");
     TCGv tmp;
     tmp = tcg_temp_new_i32();
     tcg_gen_trunc_i64_i32(tmp, val);
@@ -6466,6 +6499,7 @@ static void gen_storeq_reg(DisasContext *s, int rlow, int rhigh, TCGv_i64 val)
 /* load a 32-bit value from a register and perform a 64-bit accumulate.  */
 static void gen_addq_lo(DisasContext *s, TCGv_i64 val, int rlow)
 {
+	printf("load 32 bit value\n");
     TCGv_i64 tmp;
     TCGv tmp2;
 
@@ -6481,6 +6515,7 @@ static void gen_addq_lo(DisasContext *s, TCGv_i64 val, int rlow)
 /* load and add a 64-bit value from a register pair.  */
 static void gen_addq(DisasContext *s, TCGv_i64 val, int rlow, int rhigh)
 {
+	printf("Load and add\n");
     TCGv_i64 tmp;
     TCGv tmpl;
     TCGv tmph;
@@ -6499,6 +6534,7 @@ static void gen_addq(DisasContext *s, TCGv_i64 val, int rlow, int rhigh)
 /* Set N and Z flags from a 64-bit value.  */
 static void gen_logicq_cc(TCGv_i64 val)
 {
+	printf("logicq\n");
     TCGv tmp = tcg_temp_new_i32();
     gen_helper_logicq_cc(tmp, val);
     gen_logic_CC(tmp);
@@ -6517,6 +6553,7 @@ static void gen_logicq_cc(TCGv_i64 val)
 static void gen_load_exclusive(DisasContext *s, int rt, int rt2,
                                TCGv addr, int size)
 {
+	printf("Load exclusive\n");
     TCGv tmp;
 
     switch (size) {

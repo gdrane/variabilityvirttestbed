@@ -326,12 +326,12 @@ static int stellaris_gptm_init(SysBusDevice *dev)
 /* System controller.  */
 
 typedef struct {
-    uint32_t pborctl;
+    uint32_t pborctl; 
     uint32_t ldopctl;
     uint32_t int_status;
     uint32_t int_mask;
     uint32_t resc;
-    uint32_t rcc;
+    uint32_t rcc; /* Run Mode Clock Configurator */
     uint32_t rcgc[3];
     uint32_t scgc[3];
     uint32_t dcgc[3];

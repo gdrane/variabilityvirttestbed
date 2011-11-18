@@ -2485,9 +2485,9 @@ int main(int argc, char **argv, char **envp)
             case QEMU_OPTION_S:
                 autostart = 0;
                 break;
-	    case QEMU_OPTION_k:
-		keyboard_layout = optarg;
-		break;
+	    	case QEMU_OPTION_k:
+				keyboard_layout = optarg;
+				break;
             case QEMU_OPTION_localtime:
                 rtc_utc = 0;
                 break;
@@ -3241,20 +3241,20 @@ int main(int argc, char **argv, char **envp)
     switch (display_type) {
     case DT_NOGRAPHIC:
         break;
-#if defined(CONFIG_CURSES)
+	#if defined(CONFIG_CURSES)
     case DT_CURSES:
         curses_display_init(ds, full_screen);
         break;
-#endif
-#if defined(CONFIG_SDL)
+	#endif
+	#if defined(CONFIG_SDL)
     case DT_SDL:
         sdl_display_init(ds, full_screen, no_frame);
         break;
-#elif defined(CONFIG_COCOA)
+	#elif defined(CONFIG_COCOA)
     case DT_SDL:
         cocoa_display_init(ds, full_screen);
         break;
-#endif
+	#endif
     default:
         break;
     }
@@ -3262,7 +3262,7 @@ int main(int argc, char **argv, char **envp)
     /* must be after terminal init, SDL library changes signal handlers */
     os_setup_signal_handling();
 
-#ifdef CONFIG_VNC
+	#ifdef CONFIG_VNC
     /* init remote displays */
     if (vnc_display) {
         vnc_display_init(ds);
@@ -3273,12 +3273,12 @@ int main(int argc, char **argv, char **envp)
             printf("VNC server running on `%s'\n", vnc_display_local_addr(ds));
         }
     }
-#endif
-#ifdef CONFIG_SPICE
+	#endif
+	#ifdef CONFIG_SPICE
     if (using_spice && !qxl_enabled) {
         qemu_spice_display_init(ds);
     }
-#endif
+	#endif
 
     /* display setup */
     dpy_resize(ds);
