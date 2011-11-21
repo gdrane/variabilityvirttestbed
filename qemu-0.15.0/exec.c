@@ -978,6 +978,7 @@ TranslationBlock *tb_gen_code(CPUState *env,
 
     phys_pc = get_page_addr_code(env, pc);
     tb = tb_alloc(pc);
+	printf("\ncurrent pc : %d\n", pc); 
     if (!tb) {
         /* flush must be done */
         tb_flush(env);
