@@ -57,7 +57,7 @@
 
 //#define DEBUG_TB_INVALIDATE
 //#define DEBUG_FLUSH
-//#define DEBUG_TLB
+#define DEBUG_TLB
 //#define DEBUG_UNASSIGNED
 
 /* make various TB consistency checks */
@@ -978,7 +978,7 @@ TranslationBlock *tb_gen_code(CPUState *env,
 
     phys_pc = get_page_addr_code(env, pc);
     tb = tb_alloc(pc);
-	printf("\ncurrent pc : %d\n", pc); 
+	printf("\ncurrent pc : %x\n", pc); 
     if (!tb) {
         /* flush must be done */
         tb_flush(env);

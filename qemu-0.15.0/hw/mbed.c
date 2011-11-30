@@ -9,16 +9,333 @@
 //-----defines-----
 #define PERIPHERAL_AREA_SIZE 0x3fff //16KB
 
+/* TIMER MODULE */
+typedef struct timer_state {
+	SysBusDevice busdev;
+	uint32_t intr_reg;
+	uint32_t intr_mask;
+	uint32_t timer_cntrl_reg;
+	uint32_t timer_counter;
+	uint32_t prescale_reg;
+	uint32_t prescale_counter;
+	uint32_t match_cntrl_reg;
+	uint32_t match_reg[3];
+	uint32_t cap_cntrl_reg;
+	uint32_t capture_reg[2];
+	uint32_t external_match_reg;
+	uint32_t count_cntrl_reg;
+	int64_t tick;
+	QEMUTimer *timer;
+	qemu_irq irq;
+}timer_state;
+
+static void timer_update_irq(timer_state *s)
+{
+	int level;
+	//level = (s->intr_reg & s->intr_mask) != 0;
+	qemu_set_irq(s->irq, 0);
+}
+
+static void timer_reload(timer_state* s, int reset)
+{
+	int64_t tick;
+	if(reset)
+		tick = qemu_get_clock_ns(vm_clock);
+	else 
+		tick = s->tick;
+	if ((s->count_cntrl_reg & 0x3) == 0)
+	{
+		uint32_t count;
+		count = 1;
+		tick += (int64_t)count * system_clock_scale;
+		s->tick = tick;
+		qemu_mod_timer(s->timer, tick);
+	} else {
+		hw_error("Counter Mode Not Supported\n");
+	}
+}
+
+static void timer_stop(timer_state *s)
+{
+	qemu_del_timer(s->timer);
+}
+
+static uint32_t timer_read(void *opaque, target_phys_addr_t offset)
+{
+	timer_state *s = (timer_state*) opaque;
+	switch (offset)
+	{
+		case 0x00:
+					return s->intr_reg;
+		case 0x04:
+					return s->timer_cntrl_reg;
+		case 0x08:
+					printf("Timer Counter Read");
+					return s->timer_counter;
+		case 0x0c:
+					return s->prescale_reg;
+		case 0x10:
+					return s->prescale_counter;
+		case 0x14:
+					return s->match_cntrl_reg;
+		case 0x18:
+					return s->match_reg[0];
+		case 0x1c:
+					return s->match_reg[1];
+		case 0x20:
+					return s->match_reg[2];
+		case 0x24:
+					return s->match_reg[3];
+		case 0x28:
+					return s->cap_cntrl_reg;
+		case 0x2c:
+					return s->capture_reg[0];
+		case 0x30:
+					return s->capture_reg[1];
+		case 0x3c:
+					return s->external_match_reg;
+		case 0x70:
+					return s->count_cntrl_reg;
+		default:
+				return 0;
+	}
+	return 0;
+}
+
+static void timer_write(void *opaque, target_phys_addr_t offset, uint32_t value)
+{
+	timer_state *s = (timer_state*)opaque;
+	printf("\nTimer Write");
+	switch(offset)
+	{
+		case 0x00:
+				s->intr_mask |= value;
+				break;
+		case 0x04:
+				printf("Timer Clock Enable update%d\n",value);
+				s->timer_cntrl_reg = value;
+				if((s->timer_cntrl_reg & 0x3) == 0x1) {
+					timer_reload(s, 1);
+				}
+				printf("Timer Clock Enable update%d\n",s->timer_cntrl_reg);
+				/*
+				if(value & 0x1)
+				{
+					s->timer_cntrl_reg |= value & 0x1; 
+				} else if(!(value & 0x1)) 
+						{
+							s->timer_cntrl_reg &= ~((uint32_t)1);
+						}
+				if(value & 0x2)
+				{
+					s->timer_cntrl_reg |= value & 0x2;		
+				} else if(!(value & 0x2))
+						{
+							s->timer_cntrl_reg &= ~((uint32_t)(1<<1));
+							// Starting Clock Ticks
+							timer_reload(s, 1);
+						}
+				*/
+				break;
+		case 0x08:
+				s->timer_counter = value;
+				break;
+		case 0x0c:
+				s->prescale_reg = value;
+				break;
+		case 0x10:
+				s->prescale_counter = value;
+				break;
+		case 0x14:
+				s->match_cntrl_reg = value;
+				break;
+		case 0x18:
+				s->match_reg[0] = value;
+				break;
+		case 0x1c:
+				s->match_reg[1] = value;
+				break;
+		case 0x20:
+				s->match_reg[2] = value;
+				break;
+		case 0x24:
+				s->match_reg[3] = value;
+				break;
+		case 0x28:
+				s->cap_cntrl_reg |= value & ((1<<6) - 1);	
+				break;
+		case 0x2c:
+				printf("Cannot write to capture register 0\n");
+				break;
+		case 0x30:
+				printf("Cannot write to capture register 1\n");
+				break;
+		case 0x3c:
+				hw_error("External Match Not Emulated\n");
+				// Not emulated
+				return;
+		case 0x70:
+				//if (value && ~0x3)
+				//	return;
+				s->count_cntrl_reg |= (value & 0x3);	
+				s->count_cntrl_reg |= (value & (0x3 << 2));
+				break;
+	}
+	timer_update_irq(s);
+}
+
+static CPUReadMemoryFunc * const timer_readfn[] = {
+	timer_read,
+	timer_read,
+	timer_read
+};
+
+static CPUWriteMemoryFunc * const timer_writefn[] = {
+	timer_write,
+	timer_write,
+	timer_write
+};
+
+static void mbed_timer_tick(void *opaque)
+{
+	printf("One Clock Tick\n");
+	timer_state *s = (timer_state*) opaque;
+	// Check if timer/counter is enabled
+	if (!(s->timer_cntrl_reg & 0x1)) {
+		printf("Counter not enabled:0x%x\n",s->timer_cntrl_reg);
+		return;
+	}
+	// Reset Timer Counter and Prescale Counter till TCR[1] is not zero
+	if (s->timer_cntrl_reg & 0x2) {
+		s->timer_counter = 0;
+		s->prescale_counter = 0;
+		printf("Reset Timersn\n");
+		return;
+	}
+	printf("Incrementing prescale counter\n");
+	if((s->count_cntrl_reg & 0x3) == 0) {
+		// Timer Mode
+		// Increment Prescale counter
+		s->prescale_counter++;
+		// Check whether it's value reached prescale register
+		if(s->prescale_counter > s->prescale_reg) {
+			// Increment Timer Counter by on
+			s->timer_counter ++;
+			s->prescale_counter = 0;
+			if(s->timer_counter == s->match_reg[0]) {
+				if(s->match_cntrl_reg & 0x2) {
+					s->timer_counter = 0;
+				}
+				if(s->match_cntrl_reg & 0x1) {
+					qemu_irq_pulse(s->irq);
+				}
+				if(s->match_cntrl_reg & 0x4)
+				{
+					timer_stop(s);
+					return;
+				}
+				// TODO(gdrane) Stopping pc and tc and setting tcr[0] to 0 
+				// call timer_stop
+			} else if(s->timer_counter == s->match_reg[1]) {	
+				if(s->match_cntrl_reg & (1<<4))
+				{
+					s->timer_counter = 0;
+				}
+				if(s->match_cntrl_reg & (1<<3))
+				{
+					qemu_irq_pulse(s->irq);
+				}
+				if(s->match_cntrl_reg & (1<<5))
+				{
+					timer_stop(s);
+					return;
+				}
+			} else if(s->timer_counter == s->match_reg[2]) {
+				if(s->match_cntrl_reg & (1<<7))
+				{
+					s->timer_counter = 0;
+				}
+				if(s->match_cntrl_reg & (1<<6))
+				{
+					qemu_irq_pulse(s->irq);
+				}
+				if(s->match_cntrl_reg & (1<<8))
+				{
+					timer_stop(s);
+					return;
+				}
+			} else if(s->timer_counter == s->match_reg[3]) {
+				if(s->match_cntrl_reg & (1<<10))
+				{
+					s->timer_counter = 0;
+				}
+				if(s->match_cntrl_reg & (1<<9))
+				{
+					qemu_irq_pulse(s->irq);
+				}
+				if(s->match_cntrl_reg & (1<<11))
+				{
+					timer_stop(s);
+					return;
+				}
+			}
+			timer_reload(s, 0);
+		}
+	} else {
+		// Counter Mode
+		// Not Implemented
+	}
+	timer_update_irq(s);
+}
+
+static void mbed_timer_reset(timer_state *s)
+{
+	s->intr_reg = 0;
+	s->intr_mask = 0;
+ 	s->timer_cntrl_reg = 0;
+	s->timer_counter = 0;
+ 	s->prescale_reg = 0;
+ 	s->prescale_counter = 0;
+ 	s->match_cntrl_reg = 0;
+ 	s->match_reg[0] = 0;
+ 	s->match_reg[1] = 0;
+ 	s->match_reg[2] = 0;
+ 	s->match_reg[3] = 0;
+ 	s->cap_cntrl_reg = 0;
+ 	s->capture_reg[0] = 0;
+ 	s->capture_reg[1] = 0;
+ 	s->external_match_reg = 0;
+ 	s->count_cntrl_reg = 0;
+	s->tick = 0;
+}
+
+static int mbed_timer_init(SysBusDevice *dev)
+{
+	printf("MBED Timer initialized\n");
+	int iomemtype;
+	timer_state *s = FROM_SYSBUS(timer_state, dev);
+	sysbus_init_irq(dev, &s->irq);
+	mbed_timer_reset(s);
+	// wrong For sending interrupts on match
+	 //qdev_init_gpio_out(&dev->qdev, &s->match_trigger, 1);
+	// TODO(gdrane): Add incoming interrupt for capture register
+	iomemtype = cpu_register_io_memory(timer_readfn,
+										timer_writefn, s,
+										DEVICE_NATIVE_ENDIAN);
+	sysbus_init_mmio(dev, 0x4000, iomemtype);
+	s->timer = qemu_new_timer_ns(vm_clock, mbed_timer_tick, &s);
+	return 0;
+}
 
 /* Main Oscillator Of the MBED */
 // Main oscillator is like the vm_clock in case of qemu because it is the one that
 // provides all the timings to qemu
-
 QEMUClock* main_oscillator;
-bool main_oscillator_enabled;
+bool main_oscillator_enabled = false;
 
-static void enable_main_oscillator() 
+static void enable_main_oscillator(void) 
 {
+	printf("In enable main oscillator\n");
 	// Does nothing except gets a reference to the vm_clock maintained by
 	// qemu
 	if(!main_oscillator_enabled) 
@@ -28,8 +345,9 @@ static void enable_main_oscillator()
 	}
 }
 
-static void disable_main_oscillator() 
+static void disable_main_oscillator(void) 
 {
+	printf("In disable main oscillator\n");
 	main_oscillator = NULL;
 	main_oscillator_enabled = false;
 }
@@ -83,6 +401,7 @@ typedef struct {
 
 static void ssys_update(ssys_state *s)
 {
+	printf("In qemu ssys_update\n");
 	qemu_set_irq(s->irq, (s->extint != 0));
 }
 
@@ -160,10 +479,10 @@ static void ssys_write(void *opaque, target_phys_addr_t offset, uint32_t value)
 				// hardware
 				s->pll0stat |= (uint32_t)(1 << 26);
 			}
-			else if((s->pll0con & 0x1) /*TODO(gdrane) Enter the pll0 locked condition */ && (value & 0x10))
+			else if((s->pll0con & 0x1) /*TODO(gdrane) Enter the pll0 locked condition */ && (value & 0x2))
 			{
 				// Updating the PLL0 Connect bit  
-				s->pll0con |= 0x10;
+				s->pll0con |= 0x2;
 				// Updating status in pll0stat
 				s->pll0stat |= (uint32_t)(1 << 25);
 				//TODO(gdrane) Code to start PLL0
@@ -171,6 +490,11 @@ static void ssys_write(void *opaque, target_phys_addr_t offset, uint32_t value)
 			break;
 		case 0x084: /* PLL0 Config Register */
 			{
+				if(s->pll0con & 0x1)
+				{
+					printf("PLL0 not enabled please enable PLL0 first");
+					return;
+				}
 				// Multiplier select 
 				uint32_t msel0 = value &	((uint32_t)(1 << 15) - 1);
 				// Divider select
@@ -185,7 +509,7 @@ static void ssys_write(void *opaque, target_phys_addr_t offset, uint32_t value)
 				if(nsel0) 
 				{
 					int prevpll0stat = s->pll0stat;
-					prevpll0stat &= ~ ((uint32_t)(1 << 24) - 1)
+					prevpll0stat &= ~ ((uint32_t)(1 << 24) - 1);
 					s->pll0cfg &= ((uint32_t)(1 << 15) - 1);
 					s->pll0stat &= ((uint32_t)(1 << 15) - 1); 
 					nsel0 --;
@@ -206,6 +530,9 @@ static void ssys_write(void *opaque, target_phys_addr_t offset, uint32_t value)
 			printf("\nYou cannot write the PLL0 status register\n");
 			break;
 		case 0x08C: /* PLL0 Feed Register */
+			printf("Updating feed register\n");
+			// This is of no importance to a software emulator as we can go
+			// ahead without the feed sequence
 			if(s->pll0feed == 0 && value == 0xAA)
 			{
 				s->pll0feed = 0xAA;
@@ -235,15 +562,28 @@ static void ssys_write(void *opaque, target_phys_addr_t offset, uint32_t value)
 			s->pconp = value;
 			break;
 		case 0x104: /* CPU Clock Configuration Register */
-			s->cclkcfg = value;
+			// Used to divide PLL0 output before plugging it to CPU
+			// For cclkcfg = 0, 1 this change cannot happen when PLL0 is 
+			// connected
+			if (s->cclkcfg  == 0 && s->cclkcfg == 1) 
+			{
+				if(!(s->pll0stat & (uint32_t)(1 << 25)))
+				{
+					printf("PLL0 enabled cannot change configuration\n");
+					break;
+				}
+			}
+			s->cclkcfg = 0;
+			s->cclkcfg |= value & (((uint32_t) 1 << 8) - 1);
 			break;
 		case 0x108: /* USB Clock Configurator Register */
 			s->usbclkcfg = value;
 			break;
 		case 0x10C: /* Clock Source Select Register */
-			int pll0clock = 0;
-			swtich(value & 0x11) {
-				case 0: 
+			{
+				// int pll0clock = 0;
+				switch(value & 0x3) {
+					case 0: 
 						printf("\nInternal RC Oscillator cannot be selected as Pll0 clock: NOT IMPLEMENTED\n");
 					 	break;
 				case 1:
@@ -252,8 +592,9 @@ static void ssys_write(void *opaque, target_phys_addr_t offset, uint32_t value)
 				case 2:
 						printf("\nRTC Oscillator cannot be used as clock source:NOT IMPLEMENTED\n");
 						break;
+				}
+				s->clksrcsel = (uint32_t)0x01;
 			}
-			s->clksrcsel = (uint32_t)0x01;
 			break;
 		case 0x140: /* External Interrupt Flag Register */
 			s->extint = value;
@@ -269,30 +610,74 @@ static void ssys_write(void *opaque, target_phys_addr_t offset, uint32_t value)
 			break;
 		case 0x1A0: /* System Control and Status */
 			{
-				int oscrange = ((s->scs >> 4) & 0x1);
-				if((s->scs >> 6) & 0x1) {
-					s->scs = value;
-					s->scs |= 0x1000000;
-				} else {
-					s->scs = value;
-					s->scs &= ~((uint32_t)(1 << 6));
+				// int oscrange = ((s->scs >> 4) & 0x1);
+				uint32_t oscen = (value >> 5) & 0x1;
+				uint32_t oscrange = (value >> 6) & 0x1;
+				if(oscrange != ((s->scs >> 6) & 0x1))
+				{
+					if(oscrange) 
+					{
+						s->scs |= ((uint32_t)1 << 6);
+					}
+					else
+					{
+						s->scs &= ~((uint32_t)1 << 6);
+					}
 				}
-				if((s->scs >> 5) & 0x1) {
+				if(oscen)
+				{
+					s->scs |= (1 << 5);
+				}
+				if ((s->scs >> 5) & 0x1) {
 					enable_main_oscillator();
+					
 					// Setting the main oscillator started status
-					s->scs |= 0x1000000;
+					s->scs |= 0x40;
 				} else {
 					disable_main_oscillator();
 				}
-				if(oscrange  != ((s->scs >> 4) & 0x1))
+				/*if(oscrange  != ((s->scs >> 4) & 0x1))
 					change_oscillator_operating_range(((s->scs >> 4) & 0x1));
+				*/
 			}
 			break;
 		case 0x1A8: /* Peripheral Clock Selection Register 0 */
-			s->pclksel0 = value;
+			// Controls the input clock to peripherals. Clock rate given to
+			// peripheral is a derivative of cpuclock CCLK as per arm user 
+			// manual
+			// Each peripheral has 1bits reserved
+			// Btw, only peripheral that is not controlled by this configuration	
+			// is RTC, it's input is fixed at 1khz and or CCLK/8 (ambiguous???
+			// )
+			// 2 bit representation
+			// 00 = CCLK/4
+			// 01 = CCLK
+			// 10 = CCLK/2
+			// 11 = CCLK / 8 except for CAN1, CAN2 and CAN filtering when 11 selects
+			// =CCLK/6 (I don't know what they are saying)
+			{
+				// int prevpclksel = s->pclksel0;
+				printf("PCLK register 0 written\n");
+				// Not interested in simulating any of these peripherals
+				// you guys are free to do whatever you want to
+				s->pclksel0 = value;
+			}
 			break;
 		case 0x1AC: /* Peripheral Clock Selection Register 1 */
-			s->pclksel1 = value;
+			// Check out the comments for pclk register 0
+			{
+				// Checking whether there are timer updates to GPIO interrupts
+				//
+				if(value & 0xC)
+				{
+					//int prevpclksel1 = s->pclksel1;
+					printf("GPIO clock updated\n");
+					// Change clock configuration of GPIO interrupts
+					// TODO(gdrane)
+				}
+				s->pclksel1 = value;
+
+			}
 			break;
 		case 0x1C8: /* Clock Output Configuration Register */
 			s->clkoutcfg = value;
@@ -318,7 +703,7 @@ static CPUReadMemoryFunc * const ssys_readfn[] = {
 static void ssys_reset(void *opaque)
 {
 	ssys_state *s = (ssys_state *)opaque;
-
+	printf("In system reset\n");
 	s->extint = 0;
 	s->extmode = 0;
 	s->extpolar = 0;
@@ -345,12 +730,15 @@ static void ssys_reset(void *opaque)
 
 static void ssys_calculate_system_clock(ssys_state *s)
 {
-	// TODO(gdrane) : Stellaris implements this check out if mbed requires
-	// this
+	printf("In calculate system clock\n");
+	// Derived From SystemInit in system_LPC17xx.c
+	// TODO(gdrane): Calculate actual value everytime using PLL mathematics
+	system_clock_scale = 18;
 }
 
 static int mbed_sys_post_load(void *opaque, int version_id)
 {
+	printf("In mbed post load\n");
 	ssys_state *s = opaque;
 
 	ssys_calculate_system_clock(s);
@@ -390,6 +778,7 @@ static const VMStateDescription vmstate_mbed_sys = {
 
 static int mbed_sys_init(uint32_t base, qemu_irq irq)
 {
+	printf("in mbed sys init\n");
 	int iomemtype;
 	ssys_state *s;
 	s = (ssys_state *)qemu_mallocz(sizeof(ssys_state));
@@ -398,6 +787,7 @@ static int mbed_sys_init(uint32_t base, qemu_irq irq)
 									   ssys_writefn, (void*)s,
 									   DEVICE_NATIVE_ENDIAN);
 	printf("\niomemtype: %d", iomemtype);
+	system_clock_scale = 18;
 	cpu_register_physical_memory(base, PERIPHERAL_AREA_SIZE, iomemtype);
 	ssys_reset(s);
 	vmstate_register(NULL, -1, &vmstate_mbed_sys, s);
@@ -413,16 +803,16 @@ static void mbed_init(ram_addr_t ram_size,
 	// CPUState *env;
 	// ram_addr_t ram_offset;
 	qemu_irq *cpu_pic;
+	static const int timer_irq[] = { 1, 2, 3, 4};
 	// TODO(gdrane): Figure out gpio and pic on mbed
 	// qemu_irq pic[32];
 	// qemu_irq sic[32];
 	// qemu_irq adc;
-	// DeviceState *dev;
+	DeviceState *dev;
 	// flash size = 512kb = 0x200	
 	int flash_size = 0x200;
 	// sram_size = 32kb  = 0x20
 	int sram_size = 0x20;
-	
 	cpu_pic = armv7m_init(flash_size, sram_size, kernel_filename, cpu_model);
 	// Adding a ADC
 	// dev = sysbus_create_varargs("mbed-adc", 0x40034000, 
@@ -433,9 +823,34 @@ static void mbed_init(ram_addr_t ram_size,
 	// dev = sysbus_create_varargs("mbed-dac", 0x4008C000,
 	//							/* TODO(gdrane): Find the dac's to connect to*/);
 	// qdev_connect_gpio_in(dev, 0);
+	
+	// MBED Timer 0
+		dev = sysbus_create_simple("mbed-timer0", 0x40004000, cpu_pic[timer_irq[0]]);
+	// MBED Timer 1
+		sysbus_create_simple("mbed-timer1", 0x40008000, cpu_pic[timer_irq[1]]);
+	// MBED Timer 2
+		sysbus_create_simple("mbed-timer2", 0x40090000, cpu_pic[timer_irq[2]]);
+	// MBED Timer 3
+		sysbus_create_simple("mbed-timer3", 0x40094000, cpu_pic[timer_irq[4]]);
+	
 	#define SYS_CNTRL_INTRPT_NO 28	
 	mbed_sys_init(0x400fc000, cpu_pic[SYS_CNTRL_INTRPT_NO]);
+	// Initializing GPIO's
+	// dev = sysbus_create_varargs("mbed"
 }
+
+static void mbed_register_devices(void) {
+	sysbus_register_dev("mbed-timer0", sizeof(timer_state),
+						 mbed_timer_init);
+	sysbus_register_dev("mbed-timer1", sizeof(timer_state),
+						mbed_timer_init);
+	sysbus_register_dev("mbed-timer2", sizeof(timer_state),
+						mbed_timer_init);
+	sysbus_register_dev("mbed-timer3", sizeof(timer_state),
+						mbed_timer_init);
+}
+
+device_init(mbed_register_devices);
 
 static QEMUMachine mbed_machine = {
 	.name = "mbed",

@@ -12,6 +12,8 @@
 #include "loader.h"
 #include "elf.h"
 
+#define MBED
+
 /* Bitbanded IO.  Each word corresponds to a single bit.  */
 
 /* Get the byte address of the real memory for a bitband access.  */
@@ -149,6 +151,22 @@ static void armv7m_bitband_init(void)
     sysbus_mmio_map(sysbus_from_qdev(dev), 0, 0x42000000);
 }
 
+#ifdef MBED
+static void mbed_bitband_init(void)
+{
+	DeviceState* dev;
+
+	dev = qdev_create(NULL, "ARM,bitband-memory");
+	qdev_prop_set_uint32(dev, "base", 0x2007c000);
+	qdev_init_nofail(dev);
+	sysbus_mmio_map(sysbus_from_qdev(dev), 0, 0x22000000);
+
+	dev = qdev_create(NULL, "ARM,bitband-memory");
+	qdev_prop_set_uint32(dev, "base", 0x20080000);
+	qdev_init_nofail(dev);
+	sysbus_mmio_map(sysbus_from_qdev(dev), 0, 0x22004000);
+}
+#endif
 /* Board init.  */
 
 static void armv7m_reset(void *opaque)
@@ -201,10 +219,26 @@ qemu_irq *armv7m_init(int flash_size, int sram_size,
     cpu_register_physical_memory(0, flash_size,
                                  qemu_ram_alloc(NULL, "armv7m.flash",
                                                 flash_size) | IO_MEM_ROM);
-    cpu_register_physical_memory(0x20000000, sram_size,
+ 	#ifdef MBED 
+	cpu_register_physical_memory(0x10000000, sram_size,
+								qemu_ram_alloc(NULL, "LPC1768.localRAM",
+												sram_size) | IO_MEM_RAM);
+	cpu_register_physical_memory(0x1FFF0000, 0x8,
+								 qemu_ram_alloc(NULL, "Upper.ROM",
+								 				0x8) | IO_MEM_ROM);
+	cpu_register_physical_memory(0x2007C000, 0xf,
+								qemu_ram_alloc(NULL, "AHBSRAM0",
+											0xf) | IO_MEM_RAM);
+	cpu_register_physical_memory(0x20080000, 0xf,
+								 qemu_ram_alloc(NULL, "AHBSRAM1",
+								 				0xf) | IO_MEM_RAM);
+	mbed_bitband_init();
+    #else
+	cpu_register_physical_memory(0x20000000, sram_size,
                                  qemu_ram_alloc(NULL, "armv7m.sram",
                                                 sram_size) | IO_MEM_RAM);
-    armv7m_bitband_init();
+	armv7m_bitband_init();
+    #endif
 
     nvic = qdev_create(NULL, "armv7m_nvic");
     env->nvic = nvic;
