@@ -39,15 +39,20 @@ static void timer_update_irq(timer_state *s)
 static void timer_reload(timer_state* s, int reset)
 {
 	int64_t tick;
-	if(reset)
-		tick = qemu_get_clock_ns(vm_clock);
-	else 
-		tick = s->tick;
+	//if(reset)
+		tick = qemu_get_clock_ms(vm_clock);
+	//else 
+	//	tick = s->tick;
 	if ((s->count_cntrl_reg & 0x3) == 0)
 	{
 		uint32_t count;
 		count = 1;
-		tick += (int64_t)count * system_clock_scale;
+		if(s->prescale_reg > 0)
+		{
+			tick += (int64_t)count * s->prescale_reg ;//* system_clock_scale;
+		} else {
+			tick += (int64_t)count;
+		}
 		s->tick = tick;
 		qemu_mod_timer(s->timer, tick);
 	} else {
@@ -57,6 +62,8 @@ static void timer_reload(timer_state* s, int reset)
 
 static void timer_stop(timer_state *s)
 {
+	if(!s->timer)
+		return;
 	qemu_del_timer(s->timer);
 }
 
@@ -70,7 +77,7 @@ static uint32_t timer_read(void *opaque, target_phys_addr_t offset)
 		case 0x04:
 					return s->timer_cntrl_reg;
 		case 0x08:
-					printf("Timer Counter Read");
+					//printf("Timer Counter Read");
 					return s->timer_counter;
 		case 0x0c:
 					return s->prescale_reg;
@@ -116,6 +123,9 @@ static void timer_write(void *opaque, target_phys_addr_t offset, uint32_t value)
 				s->timer_cntrl_reg = value;
 				if((s->timer_cntrl_reg & 0x3) == 0x1) {
 					timer_reload(s, 1);
+				}
+				if((s->timer_cntrl_reg & 0x1) == 0) {
+					timer_stop(s);
 				}
 				printf("Timer Clock Enable update%d\n",s->timer_cntrl_reg);
 				/*
@@ -198,7 +208,7 @@ static CPUWriteMemoryFunc * const timer_writefn[] = {
 
 static void mbed_timer_tick(void *opaque)
 {
-	printf("One Clock Tick\n");
+	//printf("One Clock Tick\n");
 	timer_state *s = (timer_state*) opaque;
 	// Check if timer/counter is enabled
 	if (!(s->timer_cntrl_reg & 0x1)) {
@@ -212,17 +222,17 @@ static void mbed_timer_tick(void *opaque)
 		printf("Reset Timersn\n");
 		return;
 	}
-	printf("Incrementing prescale counter\n");
 	if((s->count_cntrl_reg & 0x3) == 0) {
+	// printf("Incrementing prescale counter\n");
 		// Timer Mode
 		// Increment Prescale counter
-		s->prescale_counter++;
+		//s->prescale_counter++;
 		// Check whether it's value reached prescale register
-		if(s->prescale_counter > s->prescale_reg) {
+		//if(s->prescale_counter > s->prescale_reg) {
 			// Increment Timer Counter by on
-			s->timer_counter ++;
+			s->timer_counter += 96000;
 			s->prescale_counter = 0;
-			if(s->timer_counter == s->match_reg[0]) {
+			if(s->timer_counter >= s->match_reg[0]) {
 				if(s->match_cntrl_reg & 0x2) {
 					s->timer_counter = 0;
 				}
@@ -236,7 +246,7 @@ static void mbed_timer_tick(void *opaque)
 				}
 				// TODO(gdrane) Stopping pc and tc and setting tcr[0] to 0 
 				// call timer_stop
-			} else if(s->timer_counter == s->match_reg[1]) {	
+			} else if(s->timer_counter >= s->match_reg[1]) {	
 				if(s->match_cntrl_reg & (1<<4))
 				{
 					s->timer_counter = 0;
@@ -250,7 +260,7 @@ static void mbed_timer_tick(void *opaque)
 					timer_stop(s);
 					return;
 				}
-			} else if(s->timer_counter == s->match_reg[2]) {
+			} else if(s->timer_counter >= s->match_reg[2]) {
 				if(s->match_cntrl_reg & (1<<7))
 				{
 					s->timer_counter = 0;
@@ -264,7 +274,7 @@ static void mbed_timer_tick(void *opaque)
 					timer_stop(s);
 					return;
 				}
-			} else if(s->timer_counter == s->match_reg[3]) {
+			} else if(s->timer_counter >= s->match_reg[3]) {
 				if(s->match_cntrl_reg & (1<<10))
 				{
 					s->timer_counter = 0;
@@ -279,8 +289,8 @@ static void mbed_timer_tick(void *opaque)
 					return;
 				}
 			}
-			timer_reload(s, 0);
-		}
+		//}
+		timer_reload(s, 0);
 	} else {
 		// Counter Mode
 		// Not Implemented
@@ -323,8 +333,62 @@ static int mbed_timer_init(SysBusDevice *dev)
 										timer_writefn, s,
 										DEVICE_NATIVE_ENDIAN);
 	sysbus_init_mmio(dev, 0x4000, iomemtype);
-	s->timer = qemu_new_timer_ns(vm_clock, mbed_timer_tick, &s);
+	s->timer = qemu_new_timer_ms(vm_clock, mbed_timer_tick, s);
 	return 0;
+}
+/*------------Pin Function And Mode-----------*/
+struct pin_connect_block {
+	uint32_t pinsel[11];
+	uint32_t pinmode[10];
+	uint32_t pinmode_od[5];	
+	uint32_t i2cpadcfg;
+};
+
+static uint32_t pin_connect_block_read(void* opaque, target_phys_addr_t offset)
+{
+	pin_connect_block *s = (pin_connect_block*)opaque;
+	switch(offset) {
+	case 
+
+}
+
+static void mbed_pin_connect_init(uint32_t base, qemu_irq irq)
+{
+	int iomemtype;
+	pin_connect_block *s = (pin_connect_block*) qemu_mallocz(sizeof(pin_connect_block));
+	iomemtype = cpu_register_io_memory(pin_connect_readfn,
+									   pin_connect_writefn, s,
+									   DEVICE_NATIVE_ENDIAN);
+	cpu_register_physical_memory(base, 0x00003fff, iomemtype);
+	pin_connect_block_reset(s);
+	return 0;
+}
+/*----------GPIO--------------------*/
+struct gpio_state {
+	uint32_t fiodir[4][6];
+	uint32_t fioset[4][6];
+	uint32_t fioclr[4][6];
+	uint32_t fiopin[4][6];
+	uint32_t fiomask[4][6];
+	qemu_irq irq;
+};
+
+struct gpio_interrupts {
+	uint32_t iointstatus;
+	uint32_t iointenr[2];
+	uint32_t iointenf[2];
+	uint32_t iointstatr[2];
+	uint32_t iointstatf[2];
+	uint32_t iointclr[2];	
+};
+
+static void mbed_gpio_init(SysBusDevice *dev, qemu_irq irq) {
+	struct gpio_state *s = FROM_SYSBUS(gpio_state, dev);
+	int iomemtype;
+	sysbus_init_irq(dev, &s->irq);
+	iomemtype = cpu_register_io_memory(gpio_state_readfn,
+									   gpio_state_writefn, s,
+									   DEVICE_NATIVE_ENDIAN);
 }
 
 /* Main Oscillator Of the MBED */
