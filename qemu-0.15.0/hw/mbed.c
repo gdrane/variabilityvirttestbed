@@ -1,13 +1,17 @@
 #include "sysbus.h"
 #include "arm-misc.h"
+#include "devices.h"
 #include "boards.h"
 #include "qemu-common.h"
 #include "qemu-timer.h"
+#include "qemu-char.h"
+#include "pc.h"
 #include "hw/hw.h"
 #include "hw/irq.h"
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include "sysemu.h"
 
 //-----defines-----
 #define PERIPHERAL_AREA_SIZE 0x3fff //16KB
@@ -43,7 +47,7 @@ static void timer_reload(timer_state* s, int reset)
 {
 	int64_t tick;
 	//if(reset)
-		tick = qemu_get_clock_ms(vm_clock);
+		tick = qemu_get_clock_ns(vm_clock);
 	//else 
 	//	tick = s->tick;
 	if ((s->count_cntrl_reg & 0x3) == 0)
@@ -52,9 +56,9 @@ static void timer_reload(timer_state* s, int reset)
 		count = 1;
 		if(s->prescale_reg > 0)
 		{
-			tick += (int64_t)count * s->prescale_reg ;//* system_clock_scale;
+			tick += (int64_t)count *  +  10 * s->prescale_reg ;//* system_clock_scale;
 		} else {
-			tick += (int64_t)count;
+			tick += (int64_t)count * 10;
 		}
 		s->tick = tick;
 		qemu_mod_timer(s->timer, tick);
@@ -233,7 +237,7 @@ static void mbed_timer_tick(void *opaque)
 		// Check whether it's value reached prescale register
 		//if(s->prescale_counter > s->prescale_reg) {
 			// Increment Timer Counter by on
-			s->timer_counter += 96000;
+			s->timer_counter +=	300;
 			s->prescale_counter = 0;
 			if(s->timer_counter >= s->match_reg[0]) {
 				if(s->match_cntrl_reg & 0x2) {
@@ -324,7 +328,6 @@ static void mbed_timer_reset(timer_state *s)
 
 static int mbed_timer_init(SysBusDevice *dev)
 {
-	printf("MBED Timer initialized\n");
 	int iomemtype;
 	timer_state *s = FROM_SYSBUS(timer_state, dev);
 	sysbus_init_irq(dev, &s->irq);
@@ -336,9 +339,248 @@ static int mbed_timer_init(SysBusDevice *dev)
 										timer_writefn, s,
 										DEVICE_NATIVE_ENDIAN);
 	sysbus_init_mmio(dev, 0x4000, iomemtype);
-	s->timer = qemu_new_timer_ms(vm_clock, mbed_timer_tick, s);
+	s->timer = qemu_new_timer_ns(vm_clock, mbed_timer_tick, s);
 	return 0;
 }
+
+/*================UART========================*/
+
+struct mbed_uart_state {
+	/*uint32_t rbr;
+	uint32_t thr;
+	uint32_t dll;
+	uint32_t dlm;
+	uint32_t ier;
+	uint32_t iir;
+	uint32_t fcr;
+	uint32_t lcr;
+	uint32_t lsr;
+	uint32_t scr;
+	uint32_t acr;
+	uint32_t icr;
+	uint32_t fdr;
+	uint32_t ter;
+	uint32_t dlab;
+	uint8_t rxfifo[2];
+	uint16_t txfifo[2];
+	uint8_t rx_head, rx_tail, rx_count;
+	uint8_t tx_head, tx_tail, tx_count;
+	uint8_t trigger_level;
+	CharDriverState *chr;
+	*/
+	SerialState *serial;
+	qemu_irq irq;
+};
+
+static void mbed_uart_reset(struct mbed_uart_state *s)
+{
+	/*s->dll = 1;
+	s->dlm = 0;
+	s->ier= 0;
+	s->iir = 1;
+	s->lcr = 0;
+	s->lsr = 0x60;
+	s->acr = 0;
+	s->icr = 0;
+	s->fdr = 0x10;
+	s->ter = 0x80;
+	s->rx_tail = s->rx_tail = 0;
+	s->rx_count = s->tx_count = 0;
+	s->rx_head = s->tx_head = 0;
+	s->trigger_level = 1;
+*/
+}
+
+/*static void reset_rx_fifo(struct mbed_uart_state *s)
+{
+	s->rx_head = s->rx_tail = 0;
+	s->rx_count = 0;
+}
+
+static void reset_tx_fifo(struct mbed_uart_state *s)
+{
+	s->tx_head = s->tx_tail = 0;
+	s->tx_count = 0;
+}
+
+static uint32_t mbed_uart_read(void *opaque, target_phys_addr_t offset)
+{
+	struct mbed_uart_state *s = (struct mbed_uart_state *) opaque;
+
+	switch(offset)
+	{
+		case 0x00:
+				if (!(s->lcr & (1 << 7)))
+					return s->rbr;
+				return s->dll;
+		case 0x04:
+				if (s->lcr & (1 << 7))
+						return s->dlm;
+				return s->ier;
+		case 0x08:
+				return s->iir;
+	 	case 0x0c:
+				return s->lcr;
+		case 0x14:
+				return s->lsr;
+		case 0x1c:
+				return s->scr;
+		case 0x20:
+				return s->acr;
+		case 0x24:
+				return s->icr;
+		case 0x28:
+				return s->fdr;
+		case 0x30:
+				return s->ter;
+	}
+	return 0;
+}
+
+static void mbed_uart_write(void *opaque, target_phys_addr_t offset, uint32_t value)
+{
+	struct mbed_uart_state *s = (struct mbed_uart_state*) opaque;
+
+	switch(offset)
+	{
+		case 0x00:
+				if(!(s->lcr & (1 << 7)))
+					s->thr = value;
+				else
+					s->dll = value;
+				break;
+		case 0x04:
+				if(!(s->lcr & (1 << 7)))
+					s->ier = value;
+				else 
+					s->dlm = value;
+				break;
+		case 0x08:
+				uint32_t trig_bits;
+				s->fcr = value;
+				trig_bits = s->fcr >> 6;
+				if(trig_bits & 0x1)
+					s->trigger_level = 4;
+				else if(trig_bits & 0x2)
+						s->trigger_level = 8;
+					else if(trig_bits & 0x3)
+							s->trigger_level = 14;
+						else s->trigger_level = 1;
+				if((s->fcr >> 1) & 0x1) {
+					reset_rx_fifo(s);
+					s->fcr &= ~((uint32_t)1 << 0x1);
+				}
+				if((s->fcr >> 2) & 0x1) {
+					reset_tx_fifo(s);
+					s->fcr &= ~((uint32_t)1 << 2);
+				}
+				break;
+		case 0xc:
+				s->lcr = value;
+				break;
+		case 0x1c:
+				s->scr = value;
+				break;
+		case 0x20:
+				s->acr = value;
+				break;
+		case 0x24:
+				s->icr = value;
+				break;
+		case 0x28:
+				s->fdr = value;
+				break;
+		case 0x30:
+				s->ter = value;
+				break;
+	}
+
+
+}
+
+static int mbed_serial_can_receive(void * opaque)
+{
+	struct mbed_uart_state *s = (struct uart_state *) opaque;
+	if(s->fcr & 0x1) {
+		return s->rx_count < 16;
+	}
+}
+
+static void mbed_serial_receive(void *opaque, const uint8_t *buf, int size)
+{
+	struct mbed_uart_state *s = (struct mbed_uart_state*)opaque;
+	int i;
+	if(!(s->fcr & 0x1))
+		return ;
+	if(s->rx_count > 0) {
+		s->rbr  = s->rx_fifo[s->head];
+		s->head = (s->head + 1)%16;
+		s->rx_count -- ;
+	}
+	for (i = 0;i < size; ++i) {
+		if(rx_count < 16) {
+			s->rx_fifo[s->tail] = buf[i];
+			s->rx_count ++;
+			s->tail = (s->tail + 1)%16;
+			if (s->rx_count >= s->trigger_level) {
+				s->lsr |= 0x1;
+				if((s->ier & (1<<0)) || (s->ier & (1<<2))) {
+					qemu_irq_raise(s->irq);
+				}
+			}
+		}
+	}
+}
+
+uint32_t CPUMemoryReadFunc* const mbed_uart_readfn[] = {
+	mbed_uart_read,
+	mbed_uart_read,
+	mbed_uart_read
+}
+
+uint32_t CPUMemoryWriteFunc* const mbed_uart_writefn[] = {
+	mbed_uart_write,
+	mbed_uart_write,
+	mbed_uart_write
+}
+
+static void mbed_uart_init(SysBusDevice *dev)
+{
+	printf("MBED UART initialized\n");
+	int iomemtype;
+	struct mbed_uart_state *s = FROM_SYSBUS(struct uart_state, dev);
+	s->
+	sysbus_init_irq(dev, &s->irq);
+	mbed_uart_reset(s);
+	// wrong For sending interrupts on match
+	 //qdev_init_gpio_out(&dev->qdev, &s->match_trigger, 1);
+	// TODO(gdrane): Add incoming interrupt for capture register
+	iomemtype = cpu_register_io_memory(mbed_uart_readfn,
+									   mbed_uart_writefn, s,
+									   DEVICE_NATIVE_ENDIAN);
+	sysbus_init_mmio(dev, 0x4000, iomemtype);
+	
+	return 0;
+}*/
+
+static void mbed_uart_init(target_phys_addr_t base, qemu_irq irq, CharDriverState* chr)
+{
+	struct mbed_uart_state *s;
+	int iomemtype;
+	s = qemu_mallocz(sizeof(struct mbed_uart_state));
+	s->irq = irq;
+	// mbed_uart_reset(s);
+	//iomemtype = cpu_register_io_memory(mbed_uart_readfn,
+	//								   mbed_uart_writefn, s,
+	//								   DEVICE_NATIVE_ENDIAN);
+#ifdef TARGET_WORDS_BIGENDIAN
+	s->serial = serial_mm_init(base, 2, irq, 9600, qemu_chr_open("mbed_uart", "file:/Users/gaureshrane/abc.txt", NULL), 1, 0);
+#else
+	if(chr)
+		s->serial = serial_mm_init(base , 2, irq, 9600, chr, 1, 0);
+#endif
+}
+
 /*------------Pin Function And Mode-----------*/
 struct pin_connect_block {
 	uint32_t pinsel[11];
@@ -2048,7 +2290,6 @@ bool main_oscillator_enabled = false;
 
 static void enable_main_oscillator(void) 
 {
-	printf("In enable main oscillator\n");
 	// Does nothing except gets a reference to the vm_clock maintained by
 	// qemu
 	if(!main_oscillator_enabled) 
@@ -2060,7 +2301,6 @@ static void enable_main_oscillator(void)
 
 static void disable_main_oscillator(void) 
 {
-	printf("In disable main oscillator\n");
 	main_oscillator = NULL;
 	main_oscillator_enabled = false;
 }
@@ -2115,14 +2355,12 @@ typedef struct {
 
 static void ssys_update(ssys_state *s)
 {
-	printf("In qemu ssys_update\n");
 	qemu_set_irq(s->irq, (s->extint != 0));
 }
 
 static uint32_t ssys_read(void *opaque, target_phys_addr_t offset)
 {
 	ssys_state *s = (ssys_state *) opaque;
-	printf("\nTrying to read\n");
 	switch (offset) {
 		case 0x000: /* flashcfg */
 			return s->flashcfg;
@@ -2385,7 +2623,6 @@ static void ssys_write(void *opaque, target_phys_addr_t offset, uint32_t value)
 				if(value & 0xC)
 				{
 					//int prevpclksel1 = s->pclksel1;
-					printf("GPIO clock updated\n");
 					// Change clock configuration of GPIO interrupts
 					// TODO(gdrane)
 				}
@@ -2417,7 +2654,6 @@ static CPUReadMemoryFunc * const ssys_readfn[] = {
 static void ssys_reset(void *opaque)
 {
 	ssys_state *s = (ssys_state *)opaque;
-	printf("In system reset\n");
 	s->extint = 0;
 	s->extmode = 0;
 	s->extpolar = 0;
@@ -2492,7 +2728,6 @@ static const VMStateDescription vmstate_mbed_sys = {
 
 static int mbed_sys_init(uint32_t base, qemu_irq irq)
 {
-	printf("in mbed sys init\n");
 	int iomemtype;
 	ssys_state *s;
 	s = (ssys_state *)qemu_mallocz(sizeof(ssys_state));
@@ -2500,7 +2735,6 @@ static int mbed_sys_init(uint32_t base, qemu_irq irq)
 	iomemtype = cpu_register_io_memory(ssys_readfn, 
 									   ssys_writefn, (void*)s,
 									   DEVICE_NATIVE_ENDIAN);
-	printf("\niomemtype: %d", iomemtype);
 	system_clock_scale = 18;
 	cpu_register_physical_memory(base, PERIPHERAL_AREA_SIZE, iomemtype);
 	ssys_reset(s);
@@ -2560,9 +2794,23 @@ static void mbed_init(ram_addr_t ram_size,
 	dev = qdev_create(NULL, "mbed-gpio");
 	qdev_prop_set_int32(dev, "lines", 128);
 	qdev_prop_set_ptr(dev, "intr_ref",(void*) s);
+	qdev_init_nofail(dev);
 	sysbus_mmio_map(sysbus_from_qdev(dev), 0, 0x2009c000);
 	sysbus_connect_irq(sysbus_from_qdev(dev), 0,
-						cpu_pic[37]);
+						cpu_pic[21]);
+	// UART - Serial Communication using MBED
+	// sysbus_create_simple("mbed-uart0", 0x4000c000, cpu_pic[5]);
+	// sysbus_create_simple("mbed-uart1", 0x40010000, cpu_pic[6]);
+	// sysbus_create_simple("mbed-uart2", 0x40098000, cpu_pic[7]);
+	// sysbus_create_simple("mbed-uart3", 0x4009c000, cpu_pic[8]);
+	printf("adsadasdsad");
+	if(serial_hds[0]) {
+		mbed_uart_init(0x4000c000, cpu_pic[5], /*NULL*/serial_hds[0]);
+		printf("saddddddddddddddddddd");
+		mbed_uart_init(0x40010000, cpu_pic[6], /*NULL*/serial_hds[0]);
+		mbed_uart_init(0x40098000, cpu_pic[7], /*NULL*/serial_hds[0]);
+		mbed_uart_init(0x4009c000, cpu_pic[8], /*NULL*/serial_hds[0]);
+	}
 }
 
 static SysBusDeviceInfo mbed_gpio_info = {
@@ -2587,6 +2835,15 @@ static void mbed_register_devices(void) {
 	sysbus_register_dev("mbed-timer3", sizeof(timer_state),
 						mbed_timer_init);
 	sysbus_register_withprop(&mbed_gpio_info);
+/*	sysbus_register_dev("mbed-uart0", sizeof(mbed_uart_state),
+						mbed_uart_init);
+	sysbus_register_dev("mbed-uart1", sizeof(mbed_uart_state),
+						mbed_uart_init);
+	sysbus_register_dev("mbed-uart2", sizeof(mbed_uart_state),
+						mbed_uart_init);
+	sysbus_register_dev("mbed-uart3", sizeof(mbed_uart_state),
+						mbed_uart_init);
+*/
 }
 
 device_init(mbed_register_devices);
@@ -2604,4 +2861,3 @@ static void mbed_machine_init(void)
 
 machine_init(mbed_machine_init);
 
-// TODO(gdrane): Define and Register devices
