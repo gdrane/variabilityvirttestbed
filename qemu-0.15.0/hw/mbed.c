@@ -1136,28 +1136,441 @@ static uint32_t mbed_gpio_read_byte(void *opaque, target_phys_addr_t offset) {
 	return 0;
 }
 
-static uint8_t chkmask(struct gpio_state* s, uint8_t port, uint8_t byteno, uint8_t isbyte, uint16_t value)
+static uint32_t mbed_gpio_read(void *opaque, target_phys_addr_t offset)
 {
-	if(isbyte)
+	struct gpio_state *s = (struct gpio_state*) opaque;
+	uint32_t temp;
+	uint8_t i;
+	printf("\nReading gpio\n");
+	switch(offset)
 	{
-		return !(s->fiomask[port][byteno] & (uint8_t)value);
-	} else {
-		return !((s->fiomask[port][byteno] & (value & 0xff)) | (s->fiomask[port][byteno + 1] & (uint8_t)(value >> 8)));
-	}
+		case 0x00:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiodir[0][i]  << (8 * i);
+			}
+			return temp;
+		case 0x20: 
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiodir[1][i] << (8 * i);
+			}
+			return temp;
+		case 0x40:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiodir[2][i] << (8 * i);
+			}
+			return temp;
+		case 0x60:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiodir[3][i] << (8 * i);
+			}
+			return temp;
+		case 0x80:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiodir[4][i] << (8 * i);
+			}
+			return temp;
+		case 0x18:
+			temp = 0;
+			for(i = 0;i < 4; ++i)
+			{
+				temp |= s->fiopin[0][i] << (8 * i);
+			}
+			return temp;
+		case 0x38:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiopin[1][i] << (8*i);
+			}
+			return temp;
+		case 0x58:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiopin[2][i] << (8*i);
+			}
+			return temp;
+		case 0x78:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiopin[3][i] << (8*i);
+			}
+			return temp;
+		case 0x98:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiopin[4][i] << (8*i);
+			}
+			return temp;
+		case 0x1c:
+		case 0x3c:
+		case 0x5c:
+		case 0x7c:
+		case 0x9c:
+			printf("Cannot Write to clear registers\n");
+			break;
+		case 0x10:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiomask[0][i] << (8*i);
+			}
+			return temp;
+		case 0x30:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiomask[1][i] << (8*i);
+			}
+			return temp;
+		case 0x50:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiomask[2][i] << (8*i);
+			}
+			return temp;
+		case 0x70:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiomask[3][i] << (8*i);
+			}
+			return temp;
+		case 0x90:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiomask[4][i] << (8*i);
+			}
+			return temp;
+		case 0x14:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiopin[0][i] << (8*i);
+			}
+			return temp;
+		case 0x34:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiopin[1][i] << (8*i);
+			}
+			return temp;
+		case 0x54:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiopin[2][i] << (8*i);
+			}
+			return temp;
+		case 0x74:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiopin[3][i] << (8*i);
+			}
+			return temp;
+		case 0x94:
+			temp = 0;
+			for(i = 0; i < 4; ++i)
+			{
+				temp |= s->fiopin[4][i] << (8*i);
+			}
+			return temp;
+	}		
+	return 0;
 }
 
-static uint8_t chkdir(struct gpio_state *s, uint8_t port, uint8_t byteno, uint8_t isbyte, uint16_t value)
+static uint8_t chkmask(struct gpio_state* s, uint8_t port, uint8_t byteno, uint8_t isbyte, uint32_t value)
 {
-	if(isbyte)
+	if(isbyte == 1)
+	{
+		return !(s->fiomask[port][byteno] & (uint8_t)value);
+	} else if(isbyte == 0) {
+		return !((s->fiomask[port][byteno] & (value & 0xff)) | (s->fiomask[port][byteno + 1] & (uint8_t)(value >> 8)));
+	} else if(isbyte == 2) {
+		int i;
+		for(i = 0; i < 4; ++i)
+		{
+			if(s->fiomask[port][i] & value & 0xff) {
+				printf("\nMASKED\n");
+				return 0;
+			}
+			value >>= 8;
+		}
+	}
+	printf("\nNOT MASKED\n");
+	return 1;
+}
+
+static uint8_t chkdir(struct gpio_state *s, uint8_t port, uint8_t byteno, uint8_t isbyte, uint32_t value)
+{
+	if(isbyte == 1)
 	{
 		return s->fiodir[port][byteno] & (uint8_t) value;
-	} else {
+	} else if(isbyte == 0){
 		return ((s->fiodir[port][byteno] & (value & 0xff)) | (s->fiodir[port][byteno + 1] & (value >> 8)));
+	} else if(isbyte == 2) {
+		int i;
+		for(i = 0; i < 4; ++i)
+		{
+			printf("\n%d %d", s->fiodir[port][i], value); 
+			if(s->fiodir[port][i] & (value & 0xff)) {
+				printf("OUTPUT DIRECTION");
+				return 1;
+			}
+			value >>= 8;
+		}
+	}
+	printf("INPUT DIRECTION");
+	return 0;
+}
+
+
+static void mbed_gpio_write(void *opaque, target_phys_addr_t offset, uint32_t value)
+{
+	struct gpio_state * s= (struct gpio_state*) opaque;
+	int  i;
+	printf("\nWrite GPIO \n");
+	switch(offset)
+	{
+	case 0x00:
+			for(i = 0; i < 4; ++i)
+			{
+				s->fiodir[0][i] = value  & ((1<<8) -1);
+				value >>= 8;
+			}
+			break;
+	case 0x20:
+			for(i = 0; i < 4; ++i)
+			{
+				s->fiodir[1][i] = value  & ((1<<8) -1);
+				value >>= 8;
+			}
+			break;
+	case 0x40:
+			for(i = 0; i < 4; ++i)
+			{
+				s->fiodir[2][i] = value  & ((1<<8) -1);
+				value >>= 8;
+			}
+			break;
+	case 0x60:
+			for(i = 0; i < 4; ++i)
+			{
+				s->fiodir[3][i] = value  & ((1<<8) -1);
+				value >>= 8;
+			}
+			break;
+	case 0x80:
+			for(i = 0; i < 4; ++i)
+			{
+				s->fiodir[4][i] = value  & ((1<<8) -1);
+				value >>= 8;
+			}
+			break;
+ 	case 0x18:	
+		if(chkmask(s, 0, 0, 2, value) && chkdir(s, 0, 0, 2, value))
+		{
+			for(i = 0;i < 4; ++i)
+			{
+				s->fiopin[0][i] |= (value & ((1<<8) - 1));
+				value >>= 8;
+			}
+			mbed_gpio_handler_update(s);
+		}
+		break;
+	case 0x38:
+		printf("Set Value:%d ", value);
+		if(chkmask(s, 1, 0, 2, value) && chkdir(s, 1, 0, 2, value))
+		{
+			for(i = 0;i < 4; ++i)
+			{
+				s->fiopin[1][i] |= (value & ((1<<8) - 1));
+				value >>= 8;
+			}
+			mbed_gpio_handler_update(s);
+		}
+		break;
+	case 0x58:
+		if(chkmask(s, 2, 0, 2, value) && chkdir(s, 2, 0, 2, value))
+		{
+			for(i = 0;i < 4; ++i)
+			{
+				s->fiopin[2][i] |= (value & ((1<<8) - 1));
+				value >>= 8;
+			}
+			mbed_gpio_handler_update(s);
+		}
+		break;
+	case 0x78:
+		if(chkmask(s, 3, 0, 2, value) && chkdir(s, 3, 0, 2, value))
+		{
+			for(i = 0;i < 4; ++i)
+			{
+				s->fiopin[3][i] |= (value & ((1<<8) - 1));
+				value >>= 8;
+			}
+			mbed_gpio_handler_update(s);
+		}
+		break;
+	case 0x98:
+		if(chkmask(s, 4, 0, 2, value) && chkdir(s, 4, 0, 2, value))
+		{
+			for(i = 0;i < 4; ++i)
+			{
+				s->fiopin[4][i] |= (value & ((1<<8) - 1));
+				value >>= 8;
+			}
+			mbed_gpio_handler_update(s);
+		}
+		break;
+	case 0x1c:
+		if(chkmask(s, 0, 0, 2, value) && chkdir(s, 0, 0, 2, value))
+		{
+			for(i = 0;i < 4; ++i)
+			{
+				s->fiopin[0][i] &= ~(value & ((1<<8) - 1));
+				value >>= 8;
+			}
+			mbed_gpio_handler_update(s);
+		}
+		break;
+	case 0x3c:
+		printf("Clear Value:%d ", value);
+		if(chkmask(s, 1, 0, 2, value) && chkdir(s, 1, 0, 2, value))
+		{
+			for(i = 0;i < 4; ++i)
+			{
+				s->fiopin[1][i] &= ~(value & ((1<<8) - 1));
+				value >>= 8;
+			}
+			mbed_gpio_handler_update(s);
+		}
+		break;
+	case 0x5c:
+		if(chkmask(s, 2, 0, 2, value) && chkdir(s, 2, 0, 2, value))
+		{
+			for(i = 0;i < 4; ++i)
+			{
+				s->fiopin[2][i] &= ~(value & ((1<<8) - 1));
+				value >>= 8;
+			}
+			mbed_gpio_handler_update(s);
+		}
+		break;
+	case 0x7c:
+		if(chkmask(s, 3, 0, 2, value) && chkdir(s, 3, 0, 2, value))
+		{
+			for(i = 0;i < 4; ++i)
+			{
+				s->fiopin[3][i] &= ~(value & ((1<<8) - 1));
+				value >>= 8;
+			}
+			mbed_gpio_handler_update(s);
+		}
+		break;
+	case 0x9c:
+		if(chkmask(s, 4, 0, 2, value) && chkdir(s, 4, 0, 2, value))
+		{
+			for(i = 0;i < 4; ++i)
+			{
+				s->fiopin[4][i] &= (value & ((1<<8) - 1));
+				value >>= 8;
+			}
+			mbed_gpio_handler_update(s);
+		}
+		break;
+	case 0x10:
+		for(i = 0;i < 4; ++i)
+		{
+			s->fiomask[0][i] = (value & ((1<<8) - 1));
+			value >>= 8;
+		}
+		break;
+	case 0x30:
+		for(i = 0;i < 4; ++i)
+		{
+			s->fiomask[1][i] |= (value & ((1<<8) - 1));
+			value >>= 8;
+		}
+		break;
+	case 0x50:
+		for(i = 0;i < 4; ++i)
+		{
+			s->fiomask[2][i] |= (value & ((1<<8) - 1));
+			value >>= 8;
+		}
+		break;
+	case 0x70:
+		for(i = 0;i < 4; ++i)
+		{
+			s->fiomask[3][i] |= (value & ((1<<8) - 1));
+			value >>= 8;
+		}
+		break;
+	case 0x90:
+		for(i = 0;i < 4; ++i)
+		{
+			s->fiomask[4][i] |= (value & ((1<<8) - 1));
+			value >>= 8;
+		}
+		break;
+	case 0x14:
+		for(i = 0;i < 4; ++i)
+		{
+			s->fiopin[0][i] |= (value & ((1<<8) - 1));
+			value >>= 8;
+		}
+		break;
+	case 0x34:
+		for(i = 0;i < 4; ++i)
+		{
+			s->fiopin[1][i] |= (value & ((1<<8) - 1));
+			value >>= 8;
+		}
+		break;
+	case 0x54:
+		for(i = 0;i < 4; ++i)
+		{
+			s->fiopin[2][i] |= (value & ((1<<8) - 1));
+			value >>= 8;
+		}
+		break;
+	case 0x74:
+		for(i = 0;i < 4; ++i)
+		{
+			s->fiopin[3][i] |= (value & ((1<<8) - 1));
+			value >>= 8;
+		}
+		break;
+	case 0x94:
+		for(i = 0;i < 4; ++i)
+		{
+			s->fiopin[4][i] |= (value & ((1<<8) - 1));
+			value >>= 8;
+		}
+		break;
 	}
 }
 
 static void mbed_gpio_write_halfw(void * opaque, target_phys_addr_t offset, uint32_t value)
 {
+	printf("Writing GPIO half word\n");
 	struct gpio_state *s = (struct gpio_state*) opaque;
 	switch(offset)
 	{
@@ -1559,6 +1972,7 @@ static void mbed_gpio_write_halfw(void * opaque, target_phys_addr_t offset, uint
 static void mbed_gpio_write_byte(void* opaque, target_phys_addr_t offset, uint32_t value) {
 	struct gpio_state *s = (struct gpio_state*) opaque;
 	int i, j;
+	printf("Writing gpio byte\n");
 	// Just storing value them even if it does not change it's fine
 	for(i = 0; i < 5; ++i) {
 		for(j = 0; j < 4 ; ++j) {
@@ -2140,6 +2554,7 @@ static uint32_t mbed_gpio_intr_read(void * opaque, target_phys_addr_t offset)
 	return 0;
 }
 
+
 static void mbed_gpio_intr_write(void * opaque, target_phys_addr_t offset, uint32_t value)
 {
 	struct gpio_interrupts *s = (struct gpio_interrupts*) opaque;
@@ -2258,13 +2673,13 @@ static CPUWriteMemoryFunc * const mbed_gpio_intr_writefn[] = {
 static CPUReadMemoryFunc * const mbed_gpio_readfn[] = {
 	mbed_gpio_read_byte,
 	mbed_gpio_read_halfw,
-	NULL
+	mbed_gpio_read
 };
 
 static CPUWriteMemoryFunc * const mbed_gpio_writefn[] = {
 	mbed_gpio_write_byte,
 	mbed_gpio_write_halfw,
-	NULL
+	mbed_gpio_write
 };
 
 static int mbed_gpio_init(SysBusDevice *dev)
@@ -2803,10 +3218,8 @@ static void mbed_init(ram_addr_t ram_size,
 	// sysbus_create_simple("mbed-uart1", 0x40010000, cpu_pic[6]);
 	// sysbus_create_simple("mbed-uart2", 0x40098000, cpu_pic[7]);
 	// sysbus_create_simple("mbed-uart3", 0x4009c000, cpu_pic[8]);
-	printf("adsadasdsad");
 	if(serial_hds[0]) {
 		mbed_uart_init(0x4000c000, cpu_pic[5], /*NULL*/serial_hds[0]);
-		printf("saddddddddddddddddddd");
 		mbed_uart_init(0x40010000, cpu_pic[6], /*NULL*/serial_hds[0]);
 		mbed_uart_init(0x40098000, cpu_pic[7], /*NULL*/serial_hds[0]);
 		mbed_uart_init(0x4009c000, cpu_pic[8], /*NULL*/serial_hds[0]);
