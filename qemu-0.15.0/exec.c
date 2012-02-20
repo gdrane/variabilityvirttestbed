@@ -666,7 +666,13 @@ static TranslationBlock *tb_alloc(target_ulong pc)
     tb = &tbs[nb_tbs++];
     tb->pc = pc;
     tb->cflags = 0;
-    return tb;
+	// #ifdef VARIABILITY_EXTENSIONS
+	tb->data_proc_cycle_count = 0;
+	tb->branch_cycle_count = 0;
+	tb->multiply_cycle_count = 0;
+	tb->misc_cycle_count = 0;
+	// #endif
+	return tb;
 }
 
 void tb_free(TranslationBlock *tb)
@@ -978,7 +984,7 @@ TranslationBlock *tb_gen_code(CPUState *env,
 
     phys_pc = get_page_addr_code(env, pc);
     tb = tb_alloc(pc);
-	printf("\ncurrent pc : %x\n", pc); 
+	// printf("\ncurrent pc : %x\n", pc); 
     if (!tb) {
         /* flush must be done */
         tb_flush(env);
