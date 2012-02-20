@@ -12,10 +12,32 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include "sysemu.h"
+#include <termios.h>
+#include <fcntl.h>
 
 //-----defines-----
 #define PERIPHERAL_AREA_SIZE 0x3fff //16KB
 
+// Writing to MBED hack
+struct termios tio;
+int tty_fd;
+void init_termios() {
+	memset(&tio,0, sizeof(tio));
+	tio.c_iflag = 0;
+	tio.c_oflag = 0;
+	tio.c_cflag = CS8|CREAD|CLOCAL;
+	tio.c_lflag = 0;
+	tio.c_cc[VMIN] = 1;
+	tio.c_cc[VTIME]=5;
+	tty_fd = open("/dev/tty.usbmodem622", O_RDWR|O_NONBLOCK);
+	printf(" Terminal initialized\n");
+	cfsetospeed(&tio, B115200);
+	cfsetispeed(&tio, B115200);
+	tcsetattr(tty_fd, TCSANOW, &tio);
+}
+void close_termios() {
+	close(tty_fd);
+}
 /* TIMER MODULE */
 typedef struct timer_state {
 	SysBusDevice busdev;
@@ -340,6 +362,7 @@ static int mbed_timer_init(SysBusDevice *dev)
 										DEVICE_NATIVE_ENDIAN);
 	sysbus_init_mmio(dev, 0x4000, iomemtype);
 	s->timer = qemu_new_timer_ns(vm_clock, mbed_timer_tick, s);
+		
 	return 0;
 }
 
@@ -1398,6 +1421,20 @@ static void mbed_gpio_write(void *opaque, target_phys_addr_t offset, uint32_t va
 		printf("Set Value:%d ", value);
 		if(chkmask(s, 1, 0, 2, value) && chkdir(s, 1, 0, 2, value))
 		{
+			if(tty_fd >=0)
+			{
+			char ch = -1;
+			if(value & 0x40000)
+				ch = '1';
+			else if(value & 0x100000)
+					ch = '2';
+				else if(value & 0x200000)
+						ch = '3';
+					else if(value & 0x800000)
+						ch = '4';
+			if(ch != -1)
+				write(tty_fd, &ch, 1);
+			}
 			for(i = 0;i < 4; ++i)
 			{
 				s->fiopin[1][i] |= (value & ((1<<8) - 1));
@@ -1454,6 +1491,20 @@ static void mbed_gpio_write(void *opaque, target_phys_addr_t offset, uint32_t va
 		printf("Clear Value:%d ", value);
 		if(chkmask(s, 1, 0, 2, value) && chkdir(s, 1, 0, 2, value))
 		{
+			if(tty_fd >=0)
+			{
+			char ch = -1;
+			if(value & 0x40000)
+				ch = '1';
+			else if(value & 0x100000)
+					ch = '2';
+				else if(value & 0x200000)
+						ch = '3';
+					else if(value & 0x800000)
+						ch = '4';
+			if(ch != -1)
+				write(tty_fd, &ch, 1);
+			}
 			for(i = 0;i < 4; ++i)
 			{
 				s->fiopin[1][i] &= ~(value & ((1<<8) - 1));
@@ -3187,6 +3238,7 @@ static void mbed_init(ram_addr_t ram_size,
 	//							/* TODO(gdrane): Find the dac's to connect to*/);
 	// qdev_connect_gpio_in(dev, 0);
 	
+	init_termios();
 	// MBED Timer 0
 		dev = sysbus_create_simple("mbed-timer0", 0x40004000, cpu_pic[timer_irq[0]]);
 	// MBED Timer 1
