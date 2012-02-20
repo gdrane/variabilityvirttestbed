@@ -15,6 +15,7 @@
 #include "ssi.h"
 #include "qemu-char.h"
 #include "blockdev.h"
+#include "pxa_instruction_cycle_map.h"
 
 static struct {
     target_phys_addr_t io_base;
@@ -2078,6 +2079,8 @@ PXA2xxState *pxa270_init(unsigned int sdram_size, const char *revision)
         fprintf(stderr, "Unable to find CPU definition\n");
         exit(1);
     }
+	// Initialize instruction set map in for variability
+	init_instruction_set_map();	
     s->reset = qemu_allocate_irqs(pxa2xx_reset, s, 1)[0];
 
     /* SDRAM & Internal Memory Storage */
