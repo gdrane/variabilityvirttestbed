@@ -157,6 +157,23 @@ struct TranslationBlock {
     struct TranslationBlock *jmp_next[2];
     struct TranslationBlock *jmp_first;
     uint32_t icount;
+	//#ifdef VARIABILITY_EXTENSIONS
+	// Keeps track cpu cycles of data processing intructions executed
+	uint64_t data_proc_cycle_count;
+	// Keeps track of cpu cycles for branch instruction execution
+	uint64_t branch_cycle_count;
+	// Keeps track of cpu cycles for multiply/floating instruction execution
+	uint64_t multiply_cycle_count;
+	// Keeps track of cpu cycles for load/store instruction execution
+	uint64_t ldst_cycle_count;
+	// Keeps track of cpu cyles for miscellaneous instructions
+	// Includes:
+	// 1. Status register access instruction
+	// 2. Semaphore instructions
+	// 3. Exception generating instructions
+	// 4. Instruction included in the extended instruction set
+	uint64_t misc_cycle_count;
+	// #endif
 };
 
 static inline unsigned int tb_jmp_cache_hash_page(target_ulong pc)
