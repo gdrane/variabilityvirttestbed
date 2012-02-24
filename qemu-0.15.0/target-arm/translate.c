@@ -28,6 +28,7 @@
 #include "disas.h"
 #include "tcg-op.h"
 #include "qemu-log.h"
+#include "arm_instruction_map.h"
 
 #include "helper.h"
 #define GEN_HELPER 1
@@ -101,6 +102,12 @@ static TCGv_i64 cpu_F0d, cpu_F1d;
 static const char *regnames[] =
     { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
       "r8", "r9", "r10", "r11", "r12", "r13", "r14", "pc" };
+
+static void variability_counters_manip(TranslationBlock* tb, const char* instruction)
+{
+	struct variability_instruction_set* s = get_map_entry(instruction);
+	increment_cycle_counter(tb, s);
+}
 
 /* initialize TCG globals.  */
 void arm_translate_init(void)
@@ -4547,6 +4554,7 @@ static int neon_2rm_is_float_op(int op)
             op >= NEON_2RM_VRECPE_F);
 }
 
+
 /* Each entry in this array has bit n set if the insn allows
  * size value n (otherwise it will UNDEF). Since unallocated
  * op values will have no bits set they always UNDEF.
@@ -6747,7 +6755,8 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
             case 1: /* clrex */
                 ARCH(6K);
                 gen_clrex(s);
-                return;
+            	variability_counters_manip(s->tb, "CLREX");
+				return;
             case 4: /* dsb */
             case 5: /* dmb */
             case 6: /* isb */
@@ -6801,6 +6810,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
             } else {
                 tcg_temp_free_i32(addr);
             }
+			variability_counters_manip(s->tb, "SRS");
             return;
         } else if ((insn & 0x0e50ffe0) == 0x08100a00) {
             /* rfe */
@@ -6840,7 +6850,8 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 tcg_temp_free_i32(addr);
             }
             gen_rfe(s, tmp, tmp2);
-            return;
+            variability_counters_manip(s->tb, "RFE");
+			return;
         } else if ((insn & 0x0e000000) == 0x0a000000) {
             /* branch link and change to thumb (blx <offset>) */
             int32_t offset;
@@ -6857,6 +6868,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
             val += 4;
             /* protected by ARCH(5); above, near the start of uncond block */
             gen_bx_im(s, val);
+			variability_counters_manip(s->tb, "BX");
             return;
         } else if ((insn & 0x0e000f00) == 0x0c000100) {
             if (arm_feature(env, ARM_FEATURE_IWMMXT)) {
@@ -6920,6 +6932,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 tcg_gen_ext16u_i32(tmp, tmp);
                 tcg_gen_ori_i32(tmp, tmp, val << 16);
             }
+			variability_counters_manip(s->tb, "MOVT");
             store_reg(s, rd, tmp);
         } else {
             if (((insn >> 12) & 0xf) != 0xf)
@@ -6971,14 +6984,16 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 ARCH(4T);
                 tmp = load_reg(s, rm);
                 gen_bx(s, tmp);
-            } else if (op1 == 3) {
+            	variability_counters_manip(s->tb, "BX");
+			} else if (op1 == 3) {
                 /* clz */
                 ARCH(5);
                 rd = (insn >> 12) & 0xf;
                 tmp = load_reg(s, rm);
                 gen_helper_clz(tmp, tmp);
                 store_reg(s, rd, tmp);
-            } else {
+            	variability_counters_manip(s->tb, "CLZ");
+			} else {
                 goto illegal_op;
             }
             break;
@@ -6988,6 +7003,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 /* Trivial implementation equivalent to bx.  */
                 tmp = load_reg(s, rm);
                 gen_bx(s, tmp);
+				variability_counters_manip(s->tb, "BX");
             } else {
                 goto illegal_op;
             }
@@ -7003,6 +7019,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
             tcg_gen_movi_i32(tmp2, s->pc);
             store_reg(s, 14, tmp2);
             gen_bx(s, tmp);
+			variability_counters_manip(s->tb, "BLX");
             break;
         case 0x5: /* saturating add/subtract */
             ARCH(5TE);
@@ -7010,13 +7027,18 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
             rn = (insn >> 16) & 0xf;
             tmp = load_reg(s, rm);
             tmp2 = load_reg(s, rn);
-            if (op1 & 2)
+            if (op1 & 2) {
                 gen_helper_double_saturate(tmp2, tmp2);
-            if (op1 & 1)
+				variability_counters_manip(s->tb, "QDADD");
+			}
+            if (op1 & 1) {
                 gen_helper_sub_saturate(tmp, tmp, tmp2);
-            else
+            	variability_counters_manip(s->tb, "QSUB");
+			} else {
                 gen_helper_add_saturate(tmp, tmp, tmp2);
-            tcg_temp_free_i32(tmp2);
+				variability_counters_manip(s->tb, "QADD");
+            }
+			tcg_temp_free_i32(tmp2);
             store_reg(s, rd, tmp);
             break;
         case 7:
@@ -7029,6 +7051,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
             /* bkpt */
             ARCH(5);
             gen_exception_insn(s, 4, EXCP_BKPT);
+			variability_counters_manip(s->tb, "BKPT");
             break;
         case 0x8: /* signed multiply */
         case 0xa:
@@ -7133,13 +7156,15 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 gen_logic_CC(tmp);
             }
             store_reg_bx(env, s, rd, tmp);
-            break;
+           	variability_counters_manip(s->tb, "AND_reg"); 
+			break;
         case 0x01:
             tcg_gen_xor_i32(tmp, tmp, tmp2);
             if (logic_cc) {
                 gen_logic_CC(tmp);
             }
             store_reg_bx(env, s, rd, tmp);
+			variability_counters_manip(s->tb, "EOR_reg");
             break;
         case 0x02:
             if (set_cc && rd == 15) {
@@ -7157,6 +7182,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 }
                 store_reg_bx(env, s, rd, tmp);
             }
+			variability_counters_manip(s->tb, "SUB_reg");
             break;
         case 0x03:
             if (set_cc) {
@@ -7165,6 +7191,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 tcg_gen_sub_i32(tmp, tmp2, tmp);
             }
             store_reg_bx(env, s, rd, tmp);
+			variability_counters_manip(s->tb, "SUB_reg");
             break;
         case 0x04:
             if (set_cc) {
@@ -7173,6 +7200,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 tcg_gen_add_i32(tmp, tmp, tmp2);
             }
             store_reg_bx(env, s, rd, tmp);
+			variability_counters_manip(s->tb, "ADD_reg");
             break;
         case 0x05:
             if (set_cc) {
@@ -7181,6 +7209,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 gen_add_carry(tmp, tmp, tmp2);
             }
             store_reg_bx(env, s, rd, tmp);
+			variability_counters_manip(s->tb, "ADC_reg");
             break;
         case 0x06:
             if (set_cc) {
@@ -7189,6 +7218,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 gen_sub_carry(tmp, tmp, tmp2);
             }
             store_reg_bx(env, s, rd, tmp);
+			variability_counters_manip(s->tb, "SBC_reg");
             break;
         case 0x07:
             if (set_cc) {
@@ -7197,6 +7227,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 gen_sub_carry(tmp, tmp2, tmp);
             }
             store_reg_bx(env, s, rd, tmp);
+			variability_counters_manip(s->tb, "SBC_reg");
             break;
         case 0x08:
             if (set_cc) {
@@ -7204,6 +7235,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 gen_logic_CC(tmp);
             }
             tcg_temp_free_i32(tmp);
+			variability_counters_manip(s->tb, "AND_reg");
             break;
         case 0x09:
             if (set_cc) {
@@ -7211,18 +7243,21 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 gen_logic_CC(tmp);
             }
             tcg_temp_free_i32(tmp);
+			variability_counters_manip(s->tb, "EOR_reg");
             break;
         case 0x0a:
             if (set_cc) {
                 gen_helper_sub_cc(tmp, tmp, tmp2);
             }
             tcg_temp_free_i32(tmp);
-            break;
+            variability_counters_manip(s->tb, "SUB_reg");
+			break;
         case 0x0b:
             if (set_cc) {
                 gen_helper_add_cc(tmp, tmp, tmp2);
             }
             tcg_temp_free_i32(tmp);
+			variability_counters_manip(s->tb, "ADD_reg");
             break;
         case 0x0c:
             tcg_gen_or_i32(tmp, tmp, tmp2);
@@ -7230,6 +7265,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 gen_logic_CC(tmp);
             }
             store_reg_bx(env, s, rd, tmp);
+			variability_counters_manip(s->tb, "ORR");
             break;
         case 0x0d:
             if (logic_cc && rd == 15) {
@@ -7513,13 +7549,15 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                             tcg_gen_sari_i32(tmp2, tmp2, shift);
                             tcg_gen_andi_i32(tmp, tmp, 0xffff0000);
                             tcg_gen_ext16u_i32(tmp2, tmp2);
+							variability_counters_manip(s->tb, "PKHTB");
                         } else {
                             /* pkhbt */
                             if (shift)
                                 tcg_gen_shli_i32(tmp2, tmp2, shift);
                             tcg_gen_ext16u_i32(tmp, tmp);
                             tcg_gen_andi_i32(tmp2, tmp2, 0xffff0000);
-                        }
+                        	variability_counters_manip(s->tb, "PKHBT");
+						}
                         tcg_gen_or_i32(tmp, tmp, tmp2);
                         tcg_temp_free_i32(tmp2);
                         store_reg(s, rd, tmp);
@@ -7536,10 +7574,13 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                         }
                         sh = (insn >> 16) & 0x1f;
                         tmp2 = tcg_const_i32(sh);
-                        if (insn & (1 << 22))
+                        if (insn & (1 << 22)) {
                           gen_helper_usat(tmp, tmp, tmp2);
-                        else
+						  variability_counters_manip(s->tb, "USAT");
+                        } else {
                           gen_helper_ssat(tmp, tmp, tmp2);
+						  variability_counters_manip(s->tb, "SSAT");
+						}
                         tcg_temp_free_i32(tmp2);
                         store_reg(s, rd, tmp);
                     } else if ((insn & 0x00300fe0) == 0x00200f20) {
@@ -7547,10 +7588,13 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                         tmp = load_reg(s, rm);
                         sh = (insn >> 16) & 0x1f;
                         tmp2 = tcg_const_i32(sh);
-                        if (insn & (1 << 22))
+                        if (insn & (1 << 22)) {
                           gen_helper_usat16(tmp, tmp, tmp2);
-                        else
+						  variability_counters_manip(s->tb, "USAT16");
+                        } else {
                           gen_helper_ssat16(tmp, tmp, tmp2);
+						  variability_counters_manip(s->tb, "SSAT16");
+						}
                         tcg_temp_free_i32(tmp2);
                         store_reg(s, rd, tmp);
                     } else if ((insn & 0x00700fe0) == 0x00000fa0) {
@@ -7572,12 +7616,24 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                             tcg_gen_rotri_i32(tmp, tmp, shift * 8);
                         op1 = (insn >> 20) & 7;
                         switch (op1) {
-                        case 0: gen_sxtb16(tmp);  break;
-                        case 2: gen_sxtb(tmp);    break;
-                        case 3: gen_sxth(tmp);    break;
-                        case 4: gen_uxtb16(tmp);  break;
-                        case 6: gen_uxtb(tmp);    break;
-                        case 7: gen_uxth(tmp);    break;
+                        case 0: gen_sxtb16(tmp);  
+								variability_counters_manip(s->tb, "SXTB16");
+								break;
+                        case 2: gen_sxtb(tmp);    
+								variability_counters_manip(s->tb, "SXTB");
+								break;
+                        case 3: gen_sxth(tmp);    
+								variability_counters_manip(s->tb, "SXTH");
+								break;
+                        case 4: gen_uxtb16(tmp);  
+								variability_counters_manip(s->tb, "UXTB16");
+								break;
+                        case 6: gen_uxtb(tmp);    
+								variability_counters_manip(s->tb, "UXTB");
+								break;
+                        case 7: gen_uxth(tmp);    
+								variability_counters_manip(s->tb, "UXTH");
+								break;
                         default: goto illegal_op;
                         }
                         if (rn != 15) {
@@ -7607,7 +7663,8 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                                 tcg_gen_bswap32_i32(tmp, tmp);
                         }
                         store_reg(s, rd, tmp);
-                    } else {
+                    	variability_counters_manip(s->tb, "REV");
+					} else {
                         goto illegal_op;
                     }
                     break;
@@ -7635,6 +7692,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                         tcg_gen_trunc_i64_i32(tmp, tmp64);
                         tcg_temp_free_i64(tmp64);
                         store_reg(s, rn, tmp);
+						variability_counters_manip(s->tb, "SMULL");
                     } else {
                         if (insn & (1 << 5))
                             gen_swap_half(tmp2);
@@ -7921,6 +7979,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
             /* swi */
             gen_set_pc_im(s->pc);
             s->is_jmp = DISAS_SWI;
+			variability_counters_manip(s->tb, "SWI");
             break;
         default:
         illegal_op:
@@ -8110,13 +8169,15 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                     tcg_gen_addi_i32(addr, addr, 4);
                     tmp = gen_ld32(addr, IS_USER(s));
                     store_reg(s, rd, tmp);
-                } else {
+                	variability_counters_manip(s->tb, "LDRD_imm");	
+				} else {
                     /* strd */
                     tmp = load_reg(s, rs);
                     gen_st32(tmp, addr, IS_USER(s));
                     tcg_gen_addi_i32(addr, addr, 4);
                     tmp = load_reg(s, rd);
                     gen_st32(tmp, addr, IS_USER(s));
+					variability_counters_manip(s->tb, "STRD_manip");
                 }
                 if (insn & (1 << 21)) {
                     /* Base writeback.  */
@@ -8134,6 +8195,7 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                 tcg_gen_addi_i32(addr, addr, (insn & 0xff) << 2);
                 if (insn & (1 << 20)) {
                     gen_load_exclusive(s, rs, 15, addr, 2);
+					variability_counters_manip(s->tb, "LDREX");
                 } else {
                     gen_store_exclusive(s, rd, rs, 15, addr, 2);
                 }
@@ -8153,9 +8215,11 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                     tcg_gen_add_i32(addr, addr, tmp);
                     tcg_temp_free_i32(tmp);
                     tmp = gen_ld16u(addr, IS_USER(s));
+					variability_counters_manip(s->tb, "TBH");
                 } else { /* tbb */
                     tcg_temp_free_i32(tmp);
                     tmp = gen_ld8u(addr, IS_USER(s));
+					variability_counters_manip(s->tb, "TBB");
                 }
                 tcg_temp_free_i32(addr);
                 tcg_gen_shli_i32(tmp, tmp, 1);
@@ -8172,9 +8236,11 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                 load_reg_var(s, addr, rn);
                 if (insn & (1 << 20)) {
                     gen_load_exclusive(s, rs, rd, addr, op);
+					variability_counters_manip(s->tb, "LDREXB");
                 } else {
                     gen_store_exclusive(s, rm, rs, rd, addr, op);
-                }
+                	variability_counters_manip(s->tb, "STREXB");
+				}
                 tcg_temp_free(addr);
             }
         } else {
@@ -8204,6 +8270,7 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                         tcg_temp_free_i32(addr);
                     }
                     gen_rfe(s, tmp, tmp2);
+					variability_counters_manip(s->tb, "RFE");
                 } else {
                     /* srs */
                     op = (insn & 0x1f);
@@ -8232,6 +8299,7 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                     } else {
                         tcg_temp_free_i32(addr);
                     }
+					variability_counters_manip(s->tb, "SRS");
                 }
             } else {
                 int i, loaded_base = 0;
@@ -8262,10 +8330,12 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                         } else {
                             store_reg(s, i, tmp);
                         }
+						variability_counters_manip(s->tb, "LDRM");
                     } else {
                         /* Store.  */
                         tmp = load_reg(s, i);
                         gen_st32(tmp, addr, IS_USER(s));
+						variability_counters_manip(s->tb, "STM");
                     }
                     tcg_gen_addi_i32(addr, addr, 4);
                 }
@@ -8302,13 +8372,15 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                 tcg_gen_sari_i32(tmp2, tmp2, shift);
                 tcg_gen_andi_i32(tmp, tmp, 0xffff0000);
                 tcg_gen_ext16u_i32(tmp2, tmp2);
+				variability_counters_manip(s->tb, "PKHTB");
             } else {
                 /* pkhbt */
                 if (shift)
                     tcg_gen_shli_i32(tmp2, tmp2, shift);
                 tcg_gen_ext16u_i32(tmp, tmp);
                 tcg_gen_andi_i32(tmp2, tmp2, 0xffff0000);
-            }
+            	variability_counters_manip(s->tb, "PKHBT");
+			}
             tcg_gen_or_i32(tmp, tmp, tmp2);
             tcg_temp_free_i32(tmp2);
             store_reg(s, rd, tmp);
@@ -8363,12 +8435,24 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                 tcg_gen_rotri_i32(tmp, tmp, shift * 8);
             op = (insn >> 20) & 7;
             switch (op) {
-            case 0: gen_sxth(tmp);   break;
-            case 1: gen_uxth(tmp);   break;
-            case 2: gen_sxtb16(tmp); break;
-            case 3: gen_uxtb16(tmp); break;
-            case 4: gen_sxtb(tmp);   break;
-            case 5: gen_uxtb(tmp);   break;
+            case 0: gen_sxth(tmp);   
+					variability_counters_manip(s->tb, "SXTH");
+					break;
+            case 1: gen_uxth(tmp);   
+					variability_counters_manip(s->tb, "UXTH");
+					break;
+            case 2: gen_sxtb16(tmp); 
+					variability_counters_manip(s->tb, "SXTB16");
+					break;
+            case 3: gen_uxtb16(tmp); 
+					variability_counters_manip(s->tb, "UXTB16");
+					break;
+            case 4: gen_sxtb(tmp);   
+					variability_counters_manip(s->tb, "SXTB");
+					break;
+            case 5: gen_uxtb(tmp);   
+					variability_counters_manip(s->tb, "UXTB");
+					break;
             default: goto illegal_op;
             }
             if (rn != 15) {
@@ -8411,15 +8495,19 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                 switch (op) {
                 case 0x0a: /* rbit */
                     gen_helper_rbit(tmp, tmp);
+					variability_counters_manip(s->tb, "RBIT");
                     break;
                 case 0x08: /* rev */
                     tcg_gen_bswap32_i32(tmp, tmp);
-                    break;
+                    variability_counters_manip(s->tb, "REV");
+					break;
                 case 0x09: /* rev16 */
                     gen_rev16(tmp);
+					variability_counters_manip(s->tb, "REV16");
                     break;
                 case 0x0b: /* revsh */
                     gen_revsh(tmp);
+					variability_counters_manip(s->tb, "REVSH");
                     break;
                 case 0x10: /* sel */
                     tmp2 = load_reg(s, rm);
@@ -8428,9 +8516,11 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                     gen_helper_sel_flags(tmp, tmp3, tmp, tmp2);
                     tcg_temp_free_i32(tmp3);
                     tcg_temp_free_i32(tmp2);
+					variability_counters_manip(s->tb, "SEL");
                     break;
                 case 0x18: /* clz */
                     gen_helper_clz(tmp, tmp);
+					variability_counters_manip(s->tb, "CLZ");
                     break;
                 default:
                     goto illegal_op;
@@ -8587,6 +8677,7 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                     /* umaal */
                     gen_addq_lo(s, tmp64, rs);
                     gen_addq_lo(s, tmp64, rd);
+					variability_counters_manip(s->tb, "UMAAL");
                 } else if (op & 0x40) {
                     /* 64-bit accumulate.  */
                     gen_addq(s, tmp64, rs, rd);
@@ -8635,11 +8726,13 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                 if (insn & (1 << 12)) {
                     /* b/bl */
                     gen_jmp(s, offset);
+					variability_counters_manip(s->tb, "B");
                 } else {
                     /* blx */
                     offset &= ~(uint32_t)2;
                     /* thumb2 bx, no need to check */
                     gen_bx_im(s, offset);
+					variability_counters_manip(s->tb, "BLX");
                 }
             } else if (((insn >> 23) & 7) == 7) {
                 /* Misc control */
@@ -8660,6 +8753,7 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                             tcg_temp_free_i32(addr);
                             tcg_temp_free_i32(tmp);
                             gen_lookup_tb(s);
+							variability_counters_manip(s->tb, "MSR");
                             break;
                         }
                         /* fall through */
@@ -8698,6 +8792,7 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                         if (offset) {
                             gen_set_psr_im(s, offset, 0, imm);
                         }
+						variability_counters_manip(s->tb, "CPS");
                         break;
                     case 3: /* Special control operations.  */
                         ARCH(7);
@@ -8719,6 +8814,7 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                         /* Trivial implementation equivalent to bx.  */
                         tmp = load_reg(s, rn);
                         gen_bx(s, tmp);
+						variability_counters_manip(s->tb, "BX");
                         break;
                     case 5: /* Exception return.  */
                         if (IS_USER(s)) {
@@ -8741,6 +8837,7 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                             gen_helper_cpsr_read(tmp);
                         }
                         store_reg(s, rd, tmp);
+						variability_counters_manip(s->tb, "MRS");
                         break;
                     case 7: /* mrs spsr.  */
                         /* Not accessible in user mode.  */
@@ -8748,6 +8845,7 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                             goto illegal_op;
                         tmp = load_cpu_field(spsr);
                         store_reg(s, rd, tmp);
+						variability_counters_manip(s->tb, "MRS");
                         break;
                     }
                 }
@@ -8803,6 +8901,7 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                             goto illegal_op;
                         if (imm < 32)
                             gen_ubfx(tmp, shift, (1u << imm) - 1);
+						variability_counters_manip(s->tb, "UBFX");
                         break;
                     case 3: /* Bitfield insert/clear.  */
                         if (imm < shift)
@@ -8830,12 +8929,14 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                                 gen_helper_usat16(tmp, tmp, tmp2);
                             else
                                 gen_helper_usat(tmp, tmp, tmp2);
+							variability_counters_manip(s->tb, "USAT");
                         } else {
                             /* Signed.  */
                             if ((op & 1) && shift == 0)
                                 gen_helper_ssat16(tmp, tmp, tmp2);
                             else
                                 gen_helper_ssat(tmp, tmp, tmp2);
+							variability_counters_manip(s->tb, "SSAT");
                         }
                         tcg_temp_free_i32(tmp2);
                         break;
@@ -8852,6 +8953,7 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                             tmp = load_reg(s, rd);
                             tcg_gen_ext16u_i32(tmp, tmp);
                             tcg_gen_ori_i32(tmp, tmp, imm << 16);
+							variability_counters_manip(s->tb, "MOVT");
                         } else {
                             /* movw */
                             tmp = tcg_temp_new_i32();
@@ -9086,6 +9188,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
     TCGv tmp;
     TCGv tmp2;
     TCGv addr;
+	// struct variability_instruction_set* var_s;
 
     if (s->condexec_mask) {
         cond = s->condexec_cond;
@@ -9110,9 +9213,10 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             tmp = load_reg(s, rn);
             if (insn & (1 << 10)) {
                 /* immediate */
+				rm = 0;
                 tmp2 = tcg_temp_new_i32();
                 tcg_gen_movi_i32(tmp2, (insn >> 6) & 7);
-            } else {
+			} else {
                 /* reg */
                 rm = (insn >> 6) & 7;
                 tmp2 = load_reg(s, rm);
@@ -9122,12 +9226,24 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
                     tcg_gen_sub_i32(tmp, tmp, tmp2);
                 else
                     gen_helper_sub_cc(tmp, tmp, tmp2);
-            } else {
+            	if(rm == 0) {
+					// We assume that these instructions would be present
+					// in the map thus checking for NULL is not done
+					variability_counters_manip(s->tb, "SUB_imm");
+				} else {
+					variability_counters_manip(s->tb, "SUB_reg");
+				}		
+			} else {
                 if (s->condexec_mask)
                     tcg_gen_add_i32(tmp, tmp, tmp2);
                 else
                     gen_helper_add_cc(tmp, tmp, tmp2);
-            }
+            	if(rm == 0) {
+					variability_counters_manip(s->tb, "ADD_imm");
+				} else {
+					variability_counters_manip(s->tb, "ADD_reg");
+				}
+			}
             tcg_temp_free_i32(tmp2);
             store_reg(s, rd, tmp);
         } else {
@@ -9148,7 +9264,8 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
         if (op == 0) { /* mov */
             tmp = tcg_temp_new_i32();
             tcg_gen_movi_i32(tmp, insn & 0xff);
-            if (!s->condexec_mask)
+			variability_counters_manip(s->tb, "MOV_imm");
+			if (!s->condexec_mask)
                 gen_logic_CC(tmp);
             store_reg(s, rd, tmp);
         } else {
@@ -9158,24 +9275,27 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             switch (op) {
             case 1: /* cmp */
                 gen_helper_sub_cc(tmp, tmp, tmp2);
-                tcg_temp_free_i32(tmp);
+				tcg_temp_free_i32(tmp);
                 tcg_temp_free_i32(tmp2);
-                break;
+				variability_counters_manip(s->tb, "CMP_imm");
+				break;
             case 2: /* add */
                 if (s->condexec_mask)
                     tcg_gen_add_i32(tmp, tmp, tmp2);
                 else
                     gen_helper_add_cc(tmp, tmp, tmp2);
-                tcg_temp_free_i32(tmp2);
+				tcg_temp_free_i32(tmp2);
                 store_reg(s, rd, tmp);
+				variability_counters_manip(s->tb, "ADD_imm");
                 break;
             case 3: /* sub */
                 if (s->condexec_mask)
                     tcg_gen_sub_i32(tmp, tmp, tmp2);
                 else
                     gen_helper_sub_cc(tmp, tmp, tmp2);
-                tcg_temp_free_i32(tmp2);
+				tcg_temp_free_i32(tmp2);
                 store_reg(s, rd, tmp);
+				variability_counters_manip(s->tb, "SUB_imm");
                 break;
             }
         }
@@ -9191,7 +9311,8 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             tmp = gen_ld32(addr, IS_USER(s));
             tcg_temp_free_i32(addr);
             store_reg(s, rd, tmp);
-            break;
+            variability_counters_manip(s->tb, "LDR_imm_lit");
+			break;
         }
         if (insn & (1 << 10)) {
             /* data processing extended or blx */
@@ -9205,17 +9326,20 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
                 tcg_gen_add_i32(tmp, tmp, tmp2);
                 tcg_temp_free_i32(tmp2);
                 store_reg(s, rd, tmp);
-                break;
+				variability_counters_manip(s->tb, "ADD_reg");
+				break;
             case 1: /* cmp */
                 tmp = load_reg(s, rd);
                 tmp2 = load_reg(s, rm);
                 gen_helper_sub_cc(tmp, tmp, tmp2);
                 tcg_temp_free_i32(tmp2);
                 tcg_temp_free_i32(tmp);
+				variability_counters_manip(s->tb, "CMP_reg");
                 break;
             case 2: /* mov/cpy */
                 tmp = load_reg(s, rm);
                 store_reg(s, rd, tmp);
+				variability_counters_manip(s->tb, "MOV_reg");
                 break;
             case 3:/* branch [and link] exchange thumb register */
                 tmp = load_reg(s, rm);
@@ -9225,6 +9349,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
                     tmp2 = tcg_temp_new_i32();
                     tcg_gen_movi_i32(tmp2, val);
                     store_reg(s, 14, tmp2);
+					variability_counters_manip(s->tb, "BLX_reg");
                 }
                 /* already thumb, no need to check */
                 gen_bx(s, tmp);
@@ -9250,7 +9375,8 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
         if (op == 9) { /* neg */
             tmp = tcg_temp_new_i32();
             tcg_gen_movi_i32(tmp, 0);
-        } else if (op != 0xf) { /* mvn doesn't read its first operand */
+   			variability_counters_manip(s->tb, "NEG_reg");
+		} else if (op != 0xf) { /* mvn doesn't read its first operand */
             tmp = load_reg(s, rd);
         } else {
             TCGV_UNUSED(tmp);
@@ -9260,14 +9386,16 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
         switch (op) {
         case 0x0: /* and */
             tcg_gen_and_i32(tmp, tmp, tmp2);
-            if (!s->condexec_mask)
+  			variability_counters_manip(s->tb, "AND_reg");          
+			if (!s->condexec_mask)
                 gen_logic_CC(tmp);
             break;
         case 0x1: /* eor */
             tcg_gen_xor_i32(tmp, tmp, tmp2);
             if (!s->condexec_mask)
                 gen_logic_CC(tmp);
-            break;
+            variability_counters_manip(s->tb, "EOR_reg");
+			break;
         case 0x2: /* lsl */
             if (s->condexec_mask) {
                 gen_helper_shl(tmp2, tmp2, tmp);
@@ -9275,7 +9403,8 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
                 gen_helper_shl_cc(tmp2, tmp2, tmp);
                 gen_logic_CC(tmp2);
             }
-            break;
+            variability_counters_manip(s->tb, "LSL_reg");
+			break;
         case 0x3: /* lsr */
             if (s->condexec_mask) {
                 gen_helper_shr(tmp2, tmp2, tmp);
@@ -9283,7 +9412,8 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
                 gen_helper_shr_cc(tmp2, tmp2, tmp);
                 gen_logic_CC(tmp2);
             }
-            break;
+            variability_counters_manip(s->tb, "LSR_reg");
+			break;
         case 0x4: /* asr */
             if (s->condexec_mask) {
                 gen_helper_sar(tmp2, tmp2, tmp);
@@ -9291,18 +9421,21 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
                 gen_helper_sar_cc(tmp2, tmp2, tmp);
                 gen_logic_CC(tmp2);
             }
-            break;
+            variability_counters_manip(s->tb, "ASR_reg");
+			break;
         case 0x5: /* adc */
             if (s->condexec_mask)
                 gen_adc(tmp, tmp2);
             else
                 gen_helper_adc_cc(tmp, tmp, tmp2);
-            break;
+            variability_counters_manip(s->tb, "ADC_reg");
+			break;
         case 0x6: /* sbc */
             if (s->condexec_mask)
                 gen_sub_carry(tmp, tmp, tmp2);
             else
                 gen_helper_sbc_cc(tmp, tmp, tmp2);
+            variability_counters_manip(s->tb, "SBC_reg");
             break;
         case 0x7: /* ror */
             if (s->condexec_mask) {
@@ -9312,40 +9445,48 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
                 gen_helper_ror_cc(tmp2, tmp2, tmp);
                 gen_logic_CC(tmp2);
             }
+            variability_counters_manip(s->tb, "ROR_reg");
             break;
         case 0x8: /* tst */
             tcg_gen_and_i32(tmp, tmp, tmp2);
             gen_logic_CC(tmp);
             rd = 16;
+            variability_counters_manip(s->tb, "TST_reg");
             break;
         case 0x9: /* neg */
             if (s->condexec_mask)
                 tcg_gen_neg_i32(tmp, tmp2);
             else
                 gen_helper_sub_cc(tmp, tmp, tmp2);
+            variability_counters_manip(s->tb, "NEG_reg");
             break;
         case 0xa: /* cmp */
             gen_helper_sub_cc(tmp, tmp, tmp2);
             rd = 16;
+			variability_counters_manip(s->tb, "CMP_reg");
             break;
         case 0xb: /* cmn */
             gen_helper_add_cc(tmp, tmp, tmp2);
             rd = 16;
+			variability_counters_manip(s->tb, "CMN_reg");
             break;
         case 0xc: /* orr */
             tcg_gen_or_i32(tmp, tmp, tmp2);
             if (!s->condexec_mask)
                 gen_logic_CC(tmp);
+			variability_counters_manip(s->tb, "ORR_reg");
             break;
         case 0xd: /* mul */
             tcg_gen_mul_i32(tmp, tmp, tmp2);
             if (!s->condexec_mask)
                 gen_logic_CC(tmp);
+			variability_counters_manip(s->tb, "MUL_reg");
             break;
         case 0xe: /* bic */
             tcg_gen_andc_i32(tmp, tmp, tmp2);
             if (!s->condexec_mask)
                 gen_logic_CC(tmp);
+			variability_counters_manip(s->tb, "BIC_reg");
             break;
         case 0xf: /* mvn */
             tcg_gen_not_i32(tmp2, tmp2);
@@ -9353,6 +9494,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
                 gen_logic_CC(tmp2);
             val = 1;
             rm = rd;
+			variability_counters_manip(s->tb, "MVN_reg");
             break;
         }
         if (rd != 16) {
@@ -9381,34 +9523,43 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
         tcg_gen_add_i32(addr, addr, tmp);
         tcg_temp_free_i32(tmp);
 
-        if (op < 3) /* store */
-            tmp = load_reg(s, rd);
+        if (op < 3) /* store */ {
+		 	tmp = load_reg(s, rd);
+		}
 
         switch (op) {
         case 0: /* str */
             gen_st32(tmp, addr, IS_USER(s));
-            break;
+            variability_counters_manip(s->tb, "STR_reg");
+			break;
         case 1: /* strh */
             gen_st16(tmp, addr, IS_USER(s));
+            variability_counters_manip(s->tb, "STRH_reg");
             break;
         case 2: /* strb */
+			variability_counters_manip(s->tb, "STRB_reg");
             gen_st8(tmp, addr, IS_USER(s));
             break;
         case 3: /* ldrsb */
             tmp = gen_ld8s(addr, IS_USER(s));
-            break;
+            variability_counters_manip(s->tb, "LDRSB_reg");
+			break;
         case 4: /* ldr */
             tmp = gen_ld32(addr, IS_USER(s));
+			variability_counters_manip(s->tb, "LDR_reg"); 
             break;
         case 5: /* ldrh */
             tmp = gen_ld16u(addr, IS_USER(s));
+			variability_counters_manip(s->tb, "LDRH_reg");
             break;
         case 6: /* ldrb */
             tmp = gen_ld8u(addr, IS_USER(s));
+			variability_counters_manip(s->tb, "LDRB_reg");
             break;
         case 7: /* ldrsh */
             tmp = gen_ld16s(addr, IS_USER(s));
-            break;
+            variability_counters_manip(s->tb, "LDRSH_reg");
+			break;
         }
         if (op >= 3) /* load */
             store_reg(s, rd, tmp);
@@ -9427,10 +9578,12 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             /* load */
             tmp = gen_ld32(addr, IS_USER(s));
             store_reg(s, rd, tmp);
+			variability_counters_manip(s->tb, "LDR_imm_off");
         } else {
             /* store */
             tmp = load_reg(s, rd);
             gen_st32(tmp, addr, IS_USER(s));
+			variability_counters_manip(s->tb, "STR_imm_off");
         }
         tcg_temp_free_i32(addr);
         break;
@@ -9447,10 +9600,12 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             /* load */
             tmp = gen_ld8u(addr, IS_USER(s));
             store_reg(s, rd, tmp);
+			variability_counters_manip(s->tb, "LDRB_imm_off");
         } else {
             /* store */
             tmp = load_reg(s, rd);
             gen_st8(tmp, addr, IS_USER(s));
+			variability_counters_manip(s->tb, "STRB_imm_off");
         }
         tcg_temp_free_i32(addr);
         break;
@@ -9467,10 +9622,12 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             /* load */
             tmp = gen_ld16u(addr, IS_USER(s));
             store_reg(s, rd, tmp);
+			variability_counters_manip(s->tb, "LDRH_imm_off");
         } else {
             /* store */
             tmp = load_reg(s, rd);
             gen_st16(tmp, addr, IS_USER(s));
+			variability_counters_manip(s->tb, "STRH_imm_off");
         }
         tcg_temp_free_i32(addr);
         break;
@@ -9486,10 +9643,12 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             /* load */
             tmp = gen_ld32(addr, IS_USER(s));
             store_reg(s, rd, tmp);
+			variability_counters_manip(s->tb, "PUSH");
         } else {
             /* store */
             tmp = load_reg(s, rd);
             gen_st32(tmp, addr, IS_USER(s));
+			variability_counters_manip(s->tb, "POP");
         }
         tcg_temp_free_i32(addr);
         break;
@@ -9530,10 +9689,18 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             rm = (insn >> 3) & 7;
             tmp = load_reg(s, rm);
             switch ((insn >> 6) & 3) {
-            case 0: gen_sxth(tmp); break;
-            case 1: gen_sxtb(tmp); break;
-            case 2: gen_uxth(tmp); break;
-            case 3: gen_uxtb(tmp); break;
+            case 0: gen_sxth(tmp); 
+					variability_counters_manip(s->tb, "SXTH");
+					break;
+            case 1: gen_sxtb(tmp); 
+					variability_counters_manip(s->tb, "SXTB");
+					break;
+            case 2: gen_uxth(tmp); 
+					variability_counters_manip(s->tb, "UXTH");
+					break;
+            case 3: gen_uxtb(tmp); 
+					variability_counters_manip(s->tb, "UXTB");
+					break;
             }
             store_reg(s, rd, tmp);
             break;
@@ -9557,10 +9724,12 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
                         /* pop */
                         tmp = gen_ld32(addr, IS_USER(s));
                         store_reg(s, i, tmp);
+						variability_counters_manip(s->tb, "POP");
                     } else {
                         /* push */
                         tmp = load_reg(s, i);
                         gen_st32(tmp, addr, IS_USER(s));
+						variability_counters_manip(s->tb, "PUSH");
                     }
                     /* advance to the next address.  */
                     tcg_gen_addi_i32(addr, addr, 4);
@@ -9621,7 +9790,8 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
         case 0xe: /* bkpt */
             ARCH(5);
             gen_exception_insn(s, 2, EXCP_BKPT);
-            break;
+            variability_counters_manip(s->tb, "BKPT");
+			break;
 
         case 0xa: /* rev */
             ARCH(6);
@@ -9629,9 +9799,15 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             rd = insn & 0x7;
             tmp = load_reg(s, rn);
             switch ((insn >> 6) & 3) {
-            case 0: tcg_gen_bswap32_i32(tmp, tmp); break;
-            case 1: gen_rev16(tmp); break;
-            case 3: gen_revsh(tmp); break;
+            case 0: tcg_gen_bswap32_i32(tmp, tmp); 
+					variability_counters_manip(s->tb, "REV");
+					break;
+            case 1: gen_rev16(tmp); 
+					variability_counters_manip(s->tb, "REV16");
+					break;
+            case 3: gen_revsh(tmp); 
+					variability_counters_manip(s->tb, "REVSH");
+					break;
             default: goto illegal_op;
             }
             store_reg(s, rd, tmp);
@@ -9664,6 +9840,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
                     shift = 0;
                 gen_set_psr_im(s, ((insn & 7) << 6), 0, shift);
             }
+			variability_counters_manip(s->tb, "CPS");
             break;
 
         default:
@@ -9688,10 +9865,12 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
                     } else {
                         store_reg(s, i, tmp);
                     }
+					variability_counters_manip(s->tb, "LDRM");
                 } else {
                     /* store */
                     tmp = load_reg(s, i);
                     gen_st32(tmp, addr, IS_USER(s));
+					variability_counters_manip(s->tb, "STM");
                 }
                 /* advance to the next address */
                 tcg_gen_addi_i32(addr, addr, 4);
@@ -9719,6 +9898,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             /* swi */
             gen_set_pc_im(s->pc);
             s->is_jmp = DISAS_SWI;
+			variability_counters_manip(s->tb, "SWI");
             break;
         }
         /* generate a conditional jump to next instruction */
@@ -9744,6 +9924,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
         offset = ((int32_t)insn << 21) >> 21;
         val += (offset << 1) + 2;
         gen_jmp(s, val);
+		variability_counters_manip(s->tb, "B");
         break;
 
     case 15:

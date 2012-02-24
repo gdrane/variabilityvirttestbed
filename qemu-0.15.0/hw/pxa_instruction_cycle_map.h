@@ -1,7 +1,8 @@
-// @author Gauresh D Rane 
+// @author Gauresh D Rane
+#ifndef PXA_INSTRUCTION_CYCLE_MAP_H
+#define PXA_INSTRUCTION_CYCLE_MAP_H
 #include "target-arm/arm_instruction_map.h"
 
-struct variability_instruction_set* get_map_entry(const char* instruction);
 void init_instruction_set_map(void);
 uint64_t get_cycle_count(char* instruction);
 
@@ -18,12 +19,16 @@ struct variability_instruction_set* get_map_entry(const char* instruction)
 
 void init_instruction_set_map(void)
 {
+	
+	insn_map = (struct variability_instruction_set*) arm_instructions;
+
 	get_map_entry("ADC_reg")->cycle_count = 5;	
 	get_map_entry("ADD_reg")->cycle_count = 5;	
 	get_map_entry("ADD_imm")->cycle_count = 5;	
 	get_map_entry("SUB_reg")->cycle_count = 5;	
 	get_map_entry("SUB_imm")->cycle_count = 5;	
 	get_map_entry("MOV_imm")->cycle_count = 5;	
+	get_map_entry("MOV_reg")->cycle_count = 5;	
 	get_map_entry("CMP_imm")->cycle_count = 5;	
 	get_map_entry("LDR_imm_lit")->cycle_count = 12;	
 	get_map_entry("BLX_imm")->cycle_count = 9;	
@@ -50,6 +55,7 @@ void init_instruction_set_map(void)
 	get_map_entry("LDRH_reg")->cycle_count = 12;	
 	get_map_entry("LDRB_reg")->cycle_count = 12;	
 	get_map_entry("LDRSH_reg")->cycle_count = 12;	
+	get_map_entry("LDRSB_reg")->cycle_count = 12;	
 	get_map_entry("LDR_imm_off")->cycle_count = 12;	
 	get_map_entry("STR_imm_off")->cycle_count = 6;	
 	get_map_entry("LDRB_imm_off")->cycle_count = 12;	
@@ -109,7 +115,9 @@ void init_instruction_set_map(void)
 	// get_map_entry("MRS")->cycle_count = ;	
 	// get_map_entry("UBFX")->cycle_count = ;	
 	get_map_entry("SSAT")->cycle_count = 7;	
+	get_map_entry("SSAT16")->cycle_count = 7;	
 	get_map_entry("USAT")->cycle_count = 7;	
+	get_map_entry("USAT16")->cycle_count = 7;	
 	get_map_entry("MOVT")->cycle_count = 5;	
 	get_map_entry("MOV_imm")->cycle_count = 5;	
 	get_map_entry("ADC_imm")->cycle_count = 5;
@@ -119,7 +127,9 @@ void init_instruction_set_map(void)
 	get_map_entry("RSB_reg")->cycle_count = 5;
 	get_map_entry("RSC_imm")->cycle_count = 5;
 	get_map_entry("RSC_reg")->cycle_count = 5;
-	init_arm_instruction_set_map();
+	get_map_entry("QDADD")->cycle_count = 5;
+	get_map_entry("SMULL")->cycle_count = 7;
+	// init_arm_instruction_set_map();
 }
 
 uint64_t get_cycle_count(char* instruction)
@@ -135,3 +145,4 @@ uint64_t get_cycle_count(char* instruction)
 	// out of here.
 	return p->cycle_count;
 }
+#endif

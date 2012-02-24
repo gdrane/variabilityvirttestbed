@@ -1,26 +1,35 @@
-// @author Gauresh Rane (gdrane@cs.ucla.edu)
-// Initiailizes the instruction set of the processor
-// All the instructions here are supported by QEMU.
-#ifndef ARM_INSTRUCTION_MAP_H
-#define ARM_INSTRUCTION_MAP_H
-#include "qemu-variability.h"
-// Instruction Types
-#define DATA_PROC_ISN 1	// Data Processing instructions
-#define BRANCH_ISN 2 		// Branch instructions 
-#define MULTIPLY_ISN 3		// Multiply Instructions
-#define LDST_ISN 4			// Load Store Instructions
-#define MISC_ISN 5			// Miscellaneous Instructions
-#define EXTENDED_LDST_ISN 6
-#define INSTRUCTIONS_AVAILABLE 95
+#include "arm_instruction_map.h"
+void init_arm_instruction_set_map(void)
+{
+ 	insn_map = (struct variability_instruction_set*)arm_instructions;
+}
 
-// extern struct variability_instruction_set* insn_map;
+void increment_cycle_counter(TranslationBlock* tb, struct variability_instruction_set* s)
+{
+	if(s == NULL || tb == NULL)
+		return ;
+	else if(s->cycle_count == 0)
+		{
+			printf("Error\n");
+			return;
+		}
+	switch(s->instruction_type)
+	{
+		case DATA_PROC_ISN:
+							tb->data_proc_cycle_count += s->cycle_count;
+							break;
+		case BRANCH_ISN:
+							tb->branch_cycle_count += s->cycle_count;
+							break;
+		case MULTIPLY_ISN:
+							tb->multiply_cycle_count += s->cycle_count;
+							break;
+		case MISC_ISN:
+							tb->misc_cycle_count += s->cycle_count;
+							break;
+	}
+}
 
-void init_arm_instruction_set_map(void);
-void increment_cycle_counter(TranslationBlock* tb, struct variability_instruction_set*s);
-struct variability_instruction_set* get_map_entry(const char* instruction);
-
-extern struct variability_instruction_set arm_instructions [];
-/*
 struct variability_instruction_set arm_instructions [] = {
 	{"ADC_reg", 0, DATA_PROC_ISN},
 	{"ADD_reg", 0, DATA_PROC_ISN},
@@ -85,10 +94,12 @@ struct variability_instruction_set arm_instructions [] = {
 	{"TBB", 0, BRANCH_ISN},
 	{"LDREXB", 0, LDST_ISN},
 	{"LDREXH", 0, LDST_ISN},
+	{"STREXB", 0, LDST_ISN},
+	{"STREXH", 0, LDST_ISN},
 	{"SRS", 0, MISC_ISN},
 	{"RFE", 0, MISC_ISN},
-	{"PHKTB", 0, DATA_PROC_ISN},
-	{"PHKBT", 0, DATA_PROC_ISN},
+	{"PKHTB", 0, DATA_PROC_ISN},
+	{"PKHBT", 0, DATA_PROC_ISN},
 	{"SXTB16", 0, MISC_ISN},
 	{"UXTB16", 0, MISC_ISN},
 	{"QADD", 0, DATA_PROC_ISN},
@@ -103,7 +114,6 @@ struct variability_instruction_set arm_instructions [] = {
 	{"SMMUL", 0, MULTIPLY_ISN},
 	{"SMMLA", 0, MULTIPLY_ISN},
 	{"SMMLS", 0, MULTIPLY_ISN},
-	{"USAD8", 0, DATA_PROC_ISN},
 	{"SDIV", 0, MULTIPLY_ISN},
 	{"UDIV", 0, MULTIPLY_ISN},
 	{"UMAAL", 0, MULTIPLY_ISN},
@@ -117,44 +127,15 @@ struct variability_instruction_set arm_instructions [] = {
 	{"MRS", 0, MISC_ISN},
 	{"UBFX", 0, DATA_PROC_ISN},
 	{"SSAT", 0, DATA_PROC_ISN},
+	{"SSAT16", 0, DATA_PROC_ISN},
 	{"USAT", 0, DATA_PROC_ISN},
+	{"USAT16", 0, DATA_PROC_ISN},
 	{"MOVT", 0, DATA_PROC_ISN},
 	{"RSB_imm", 0, DATA_PROC_ISN},
 	{"RSB_reg", 0, DATA_PROC_ISN},
 	{"SBC_imm", 0, DATA_PROC_ISN},
 	{"SBC_reg", 0, DATA_PROC_ISN},
-	{"RSC", 0, DATA_PROC_ISN}
+	{"RSC", 0, DATA_PROC_ISN},
+	{"QDADD", 0, DATA_PROC_ISN}
 };
 
-void init_arm_instruction_set_map(void)
-{
- 	insn_map = (struct variability_instruction_set*)arm_instructions;
-}
-
-void increment_cycle_counter(TranslationBlock* tb, struct variability_instruction_set* s)
-{
-	if(s == NULL || tb == NULL)
-		return ;
-	else if(s->cycle_count == 0)
-		{
-			printf("Error\n");
-			return;
-		}
-	switch(s->instruction_type)
-	{
-		case DATA_PROC_ISN:
-							tb->data_proc_cycle_count += s->cycle_count;
-							break;
-		case BRANCH_ISN:
-							tb->branch_cycle_count += s->cycle_count;
-							break;
-		case MULTIPLY_ISN:
-							tb->multiply_cycle_count += s->cycle_count;
-							break;
-		case MISC_ISN:
-							tb->misc_cycle_count += s->cycle_count;
-							break;
-	}
-}
-*/
-#endif
