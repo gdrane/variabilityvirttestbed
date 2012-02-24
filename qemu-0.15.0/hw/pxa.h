@@ -36,6 +36,7 @@
 # define PXA2XX_PIC_OST_0	26
 # define PXA2XX_PIC_RTC1HZ	30
 # define PXA2XX_PIC_RTCALARM	31
+# define PXA2XX_PIC_VARMODULE 34
 
 /* DMA requests */
 # define PXA2XX_RX_RQ_I2S	2
@@ -130,7 +131,7 @@ typedef struct {
     PXA2xxI2SState *i2s;
     PXA2xxFIrState *fir;
     PXA2xxKeyPadState *kp;
-
+	struct PXA27xVarModuleState *var_module;
     /* Power management */
     target_phys_addr_t pm_base;
     uint32_t pm_regs[0x40];

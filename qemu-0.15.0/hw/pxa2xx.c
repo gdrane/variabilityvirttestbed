@@ -2049,6 +2049,96 @@ static PXA2xxFIrState *pxa2xx_fir_init(target_phys_addr_t base,
     return s;
 }
 
+// State of the variability module
+// All the state is stored inside the qemu-variability registers
+// This device is just a interface to that global qemu-variability
+// variables. This allows to expose those global cycle counters as memory
+// mapped registers inside the virtual machine.
+struct PXA27xVarModuleState {
+	qemu_irq irq;
+};
+
+static void pxa27x_var_module_reset(struct PXA27xVarModuleState* s)
+{
+	reset_all_cycle_counters();
+
+}
+
+static uint32_t pxa27x_var_module_read(void* opaque, 
+									target_phys_addr_t offset)
+{
+	//struct PXA27xVarModuleState* s = (struct PXA27xVarModuleState*) opaque;
+	struct cycle_counter cy;
+	read_all_cycle_counters(&cy);
+	switch(offset)
+	{
+		case 0x00:// Lower 32 Data Proc Cycles
+					return (uint32_t) (cy.data_proc_cycles);	
+		case 0x04: // Upper 32 Data Proc Cycles
+					return (uint32_t) (cy.data_proc_cycles >> 32);
+					
+		case 0x08: // Lower 32 Branch Cycles
+					return (uint32_t) (cy.branch_cycles);
+					
+		case 0x0c:	// Upper 32 Branch Cycles
+					return (uint32_t) (cy.branch_cycles >> 32);
+
+		case 0x10: // Lower 32 Multiply Cycles
+					return (uint32_t) (cy.multiply_cycles);
+					
+		case 0x14: // Upper 32 Multiple Cycles
+					return (uint32_t) (cy.multiply_cycles >> 32);
+
+		case 0x18: // Lower 32 Load-Store Cycles
+					return (uint32_t) (cy.ldst_cycles);
+
+		case 0x1c: // Upper 32 Load-Store Cycles
+					return (uint32_t) (cy.ldst_cycles >> 32);
+
+		case 0x20: // Lower 32 Miscellaneous Cycles
+					return (uint32_t) (cy.misc_cycles);
+
+		case 0x24: // Upper 32 Miscellaneous Cycles
+					return (uint32_t) (cy.misc_cycles >> 32);
+
+	}
+	return (uint32_t)0;
+}
+
+static void pxa27x_var_module_write(void* opaque, target_phys_addr_t offset, uint32_t value)
+{
+	// These registers are not writable
+	// Thus we don't do anything here
+	printf("Trying to write non writeable variability registers\n");
+
+}
+
+static CPUReadMemoryFunc * const pxa27x_var_module_readfn[] = {
+    pxa27x_var_module_read,
+    pxa27x_var_module_read,
+    pxa27x_var_module_read
+};
+
+static CPUWriteMemoryFunc * const pxa27x_var_module_writefn[] = {
+    pxa27x_var_module_write,
+    pxa27x_var_module_write,
+    pxa27x_var_module_write
+};
+
+static struct PXA27xVarModuleState* pxa27x_variability_module_init(target_phys_addr_t base, 
+						qemu_irq irq)
+{
+		int iomemtype;
+		struct PXA27xVarModuleState *s = 
+		(struct PXA27xVarModuleState*) qemu_mallocz(sizeof(struct PXA27xVarModuleState));
+		s->irq = irq;
+		pxa27x_var_module_reset(s);
+		iomemtype = cpu_register_io_memory(pxa27x_var_module_readfn,
+					pxa27x_var_module_writefn, s, DEVICE_NATIVE_ENDIAN);
+		cpu_register_physical_memory(base, 0x1000, iomemtype);
+		return s;
+}
+
 static void pxa2xx_reset(void *opaque, int line, int level)
 {
     PXA2xxState *s = (PXA2xxState *) opaque;
@@ -2196,6 +2286,9 @@ PXA2xxState *pxa270_init(unsigned int sdram_size, const char *revision)
 
     s->kp = pxa27x_keypad_init(0x41500000,
                     qdev_get_gpio_in(s->pic, PXA2XX_PIC_KEYPAD));
+
+	s->var_module = pxa27x_variability_module_init(0x42000000,
+						qdev_get_gpio_in(s->pic, PXA2XX_PIC_VARMODULE));
 
     /* GPIO1 resets the processor */
     /* The handler can be overridden by board-specific code */
