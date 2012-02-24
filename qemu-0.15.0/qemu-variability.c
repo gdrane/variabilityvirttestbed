@@ -1,5 +1,11 @@
 #include "qemu-variability.h"
 
+static uint64_t total_data_proc_cycle_count = 0;
+static uint64_t total_branch_cycle_count = 0;
+static uint64_t total_multiply_cycle_count = 0;
+static uint64_t total_ldst_cycle_count = 0;
+static uint64_t total_misc_cycle_count = 0;
+
 void read_all_cycle_counters(struct cycle_counter *s)
 {
 	// TODO(gdrane): Add lock before access

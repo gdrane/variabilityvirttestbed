@@ -3,12 +3,6 @@
 #define QEMU_VARIABILITY_H
 #include "qemu-common.h"
 
-static uint64_t total_data_proc_cycle_count = 0;
-static uint64_t total_branch_cycle_count = 0;
-static uint64_t total_multiply_cycle_count = 0;
-static uint64_t total_ldst_cycle_count = 0;
-static uint64_t total_misc_cycle_count = 0;
-
 struct cycle_counter
 {
 	uint64_t data_proc_cycles;
