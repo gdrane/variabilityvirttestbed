@@ -1185,12 +1185,12 @@ static int stellaris_ssi_bus_init(SSISlave *dev)
     return 0;
 }
 
-void read_curr_active_energy(struct energy_counter *s)
+static void read_curr_active_energy(struct energy_counter *s)
 {
 	calculate_active_energy(s);
 }
 
-void read_curr_sleep_energy(struct energy_counter *s)
+static void read_curr_sleep_energy(struct energy_counter *s)
 {
 	calculate_sleep_energy(s);
 }
@@ -1273,17 +1273,18 @@ static CPUWriteMemoryFunc* const stellaris_var_mod_writefn[] = {
 
 static int stellaris_var_mod_init(SysBusDevice *dev)
 {	
-
-		int iomemtype;
-		struct StellarisVarModuleState *s = 
-		(struct StellarisVarModuleState*) qemu_mallocz(sizeof(struct StellarisVarModuleState));
-    	sysbus_init_irq(dev, &s->irq);
-		stellaris_var_mod_reset(s);
-		iomemtype = cpu_register_io_memory(stellaris_var_mod_readfn,
-					stellaris_var_mod_writefn, s, DEVICE_NATIVE_ENDIAN);
-		sysbus_init_mmio(dev, 0x1000, iomemtype);
-		// printf("\n Stellaris Variability Module Initialized");
-		return 0;
+	int iomemtype;
+	struct StellarisVarModuleState *s = 
+	(struct StellarisVarModuleState*) qemu_mallocz(sizeof(struct StellarisVarModuleState));
+   	sysbus_init_irq(dev, &s->irq);
+	stellaris_var_mod_reset(s);
+	iomemtype = cpu_register_io_memory(stellaris_var_mod_readfn,
+				stellaris_var_mod_writefn, s, DEVICE_NATIVE_ENDIAN);
+	sysbus_init_mmio(dev, 0x1000, iomemtype);
+	// Initialize power_model
+	power_init();
+	// printf("\n Stellaris Variability Module Initialized");
+	return 0;
 }
 
 /* Board init.  */

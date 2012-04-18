@@ -17,6 +17,7 @@
 #include "usb-ohci.h"
 #include "boards.h"
 #include "blockdev.h"
+#include "versatilepb_instruction_map.h"
 
 /* Primary interrupt controller.  */
 
@@ -185,8 +186,9 @@ static void versatile_init(ram_addr_t ram_size,
     NICInfo *nd;
     int n;
     int done_smc = 0;
-
-    if (!cpu_model)
+	init_versatilepb_instruction_set_map();
+    
+	if (!cpu_model)
         cpu_model = "arm926";
     env = cpu_init(cpu_model);
     if (!env) {
@@ -257,8 +259,11 @@ static void versatile_init(ram_addr_t ram_size,
 
     /* Add PL031 Real Time Clock. */
     sysbus_create_simple("pl031", 0x101e8000, pic[10]);
-
-    /* Memory map for Versatile/PB:  */
+	
+	/* Adding Variability Module */
+	sysbus_create_simple("varmod", 0x101f5000, sic[10]);
+    
+	/* Memory map for Versatile/PB:  */
     /* 0x10000000 System registers.  */
     /* 0x10001000 PCI controller config registers.  */
     /* 0x10002000 Serial bus interface.  */
@@ -293,6 +298,7 @@ static void versatile_init(ram_addr_t ram_size,
     /*  0x101f2000 UART1.  */
     /*  0x101f3000 UART2.  */
     /* 0x101f4000 SSPI.  */
+	/* 0x101f5000 Variability Module */
 
     versatile_binfo.ram_size = ram_size;
     versatile_binfo.kernel_filename = kernel_filename;
