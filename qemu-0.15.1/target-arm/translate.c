@@ -7195,7 +7195,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
 			variability_counters_manip(s->tb, "SUB_reg");
             break;
         case 0x04:
-			gen_helper_var_errormodel(cpu_env, 1, 2, 3);
+			// gen_helper_var_errormodel(cpu_env, 1, 2, 3);
             if (set_cc) {
                 gen_helper_add_cc(tmp, tmp, tmp2);
             } else {
@@ -7255,7 +7255,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
             variability_counters_manip(s->tb, "SUB_reg");
 			break;
         case 0x0b:
-			gen_helper_var_errormodel(cpu_env, 1, 2, 3);
+			// gen_helper_var_errormodel(cpu_env, 1, 2, 3);
             if (set_cc) {
                 gen_helper_add_cc(tmp, tmp, tmp2);
             }
@@ -7268,7 +7268,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                 gen_logic_CC(tmp);
             }
             store_reg_bx(env, s, rd, tmp);
-			variability_counters_manip(s->tb, "ORR");
+			variability_counters_manip(s->tb, "ORR_reg");
             break;
         case 0x0d:
             if (logic_cc && rd == 15) {
@@ -8068,7 +8068,7 @@ gen_thumb2_data_op(DisasContext *s, int op, int conds, uint32_t shifter_out, TCG
 		variability_counters_manip(s->tb, "EOR_reg");
         break;
     case 8: /* add */
-	    gen_helper_var_errormodel(cpu_env, 1, 2, 3);
+	    // gen_helper_var_errormodel(cpu_env, 1, 2, 3);
         if (conds)
             gen_helper_add_cc(t0, t0, t1);
         else
@@ -9309,7 +9309,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
 					variability_counters_manip(s->tb, "SUB_reg");
 				}		
 			} else {
-				gen_helper_var_errormodel(cpu_env, 1, 2, 3);
+				// gen_helper_var_errormodel(cpu_env, 1, 2, 3);
                 if (s->condexec_mask)
                     tcg_gen_add_i32(tmp, tmp, tmp2);
                 else
@@ -9399,7 +9399,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
             case 0: /* add */
                 tmp = load_reg(s, rd);
                 tmp2 = load_reg(s, rm);
-				gen_helper_var_errormodel(cpu_env, 1, 2, 3);
+				// gen_helper_var_errormodel(cpu_env, 1, 2, 3);
                 tcg_gen_add_i32(tmp, tmp, tmp2);
                 tcg_temp_free_i32(tmp2);
                 store_reg(s, rd, tmp);

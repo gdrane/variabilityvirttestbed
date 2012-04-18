@@ -471,5 +471,7 @@ DEF_HELPER_3(neon_qzip32, void, env, i32, i32)
 
 // Variability Helpers
 DEF_HELPER_4(var_errormodel, void, env, i32, i32, i32)
+// DEF_HELPER_2(var_loadregmodel, void, env, i32)
+// DEF_HELPER_2(var_storeregmodel, void, env, i32)
 
 #include "def-helper.h"

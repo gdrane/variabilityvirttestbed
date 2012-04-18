@@ -8,7 +8,7 @@ static uint64_t total_branch_cycle_count = 0;
 static uint64_t total_multiply_cycle_count = 0;
 static uint64_t total_ldst_cycle_count = 0;
 static uint64_t total_misc_cycle_count = 0;
-static uint64_t total_sleep_cycle_count = 0;
+// static uint64_t total_sleep_cycle_count = 0;
 
 // Prev energies, not the current one, current is calculated based on the 
 // chpkts and cycle after that  and current frequency
@@ -28,7 +28,7 @@ static uint64_t cycle_count_chkpt_misc = 0;
 // Sleep Cycle count variables
 static bool started_sleep_count = false;
 static int64_t sleep_start_time = 0;
-static uint64_t mach_freq = 400;
+//static uint64_t mach_freq = 400;
 static uint64_t sleep_energy = 0;
 PowerModel *curr_power_model = NULL;
 
@@ -55,8 +55,9 @@ void reset_all_cycle_counters(void)
 	total_misc_cycle_count = 0;
 }
 
-void increment_cycle_counters(TranslationBlock* tb)
+void increment_cycle_counters(void* opaque)
 {
+	TranslationBlock* tb = (TranslationBlock*) opaque;
 	//printf("Data Processing Cycle : %llu, Branch Cycle Count: %llu, Multiply Cycle Count: %llu, LDST Cycle Count: %llu, Misc Cycle Count: %llu\n", total_data_proc_cycle_count, total_branch_cycle_count, total_multiply_cycle_count, total_ldst_cycle_count, total_misc_cycle_count);
 	// TODO(gdrane): Take lock before accessing
 	total_data_proc_cycle_count += tb->data_proc_cycle_count;
@@ -159,7 +160,7 @@ uint64_t read_sleep_energy(void)
 	return sleep_energy;
 }
 
-void power_model_init(struct PowerModel* pwr_model)
+void power_model_init(PowerModel* pwr_model)
 {
 	curr_power_model = pwr_model;
 }
@@ -201,7 +202,22 @@ void do_info_cyclecount(Monitor *mon, QObject **ret_data)
 
 void do_info_energy(Monitor *mon, QObject **ret_data)
 {
-
+	QDict *qdict;
+	QObject *obj;
+	struct energy_counter s;
+	uint64_t dynamic_energy, leakage_energy;
+	calculate_active_energy(&s);
+	calculate_sleep_energy(&s);
+	dynamic_energy = s.data_proc_energy + s.branch_energy +  s.multiply_energy + s.ldst_energy + s.misc_energy;
+	leakage_energy = s.sleep_energy;
+	qdict = qdict_new();
+	obj = qobject_from_jsonf(" { 'ENERGY_TYPE' : 'DYNAMIC' , "
+								"'value': %" PRId64 " }" , dynamic_energy);
+	qdict_put_obj(qdict, "1", obj);
+	obj = qobject_from_jsonf(" { 'ENERGY_TYPE' : 'LEAKAGE' , "
+								"'value': %" PRId64 " }" , leakage_energy);
+	qdict_put_obj(qdict, "2", obj);
+	*ret_data = QOBJECT(qdict);	
 }
 
 void monitor_print_variability(Monitor *mon, const QObject *ret)

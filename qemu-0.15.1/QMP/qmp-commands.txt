@@ -1,8 +1,3 @@
-HXCOMM QMP dispatch table and documentation
-HXCOMM Text between SQMP and EQMP is copied to the QMP documention file and
-HXCOMM does not show up in the other formats.
-
-SQMP
                         QMP Supported Commands
                         ----------------------
 
@@ -58,18 +53,6 @@ If you're planning to adopt QMP, please observe the following:
 Server's responses in the examples below are always a success response, please
 refer to the QMP specification for more details on error responses.
 
-EQMP
-
-    {
-        .name       = "quit",
-        .args_type  = "",
-        .params     = "",
-        .help       = "quit the emulator",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_quit,
-    },
-
-SQMP
 quit
 ----
 
@@ -82,18 +65,6 @@ Example:
 -> { "execute": "quit" }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "eject",
-        .args_type  = "force:-f,device:B",
-        .params     = "[-f] device",
-        .help       = "eject a removable medium (use -f to force it)",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_eject,
-    },
-
-SQMP
 eject
 -----
 
@@ -111,18 +82,6 @@ Example:
 
 Note: The "force" argument defaults to false.
 
-EQMP
-
-    {
-        .name       = "change",
-        .args_type  = "device:B,target:F,arg:s?",
-        .params     = "device filename [format]",
-        .help       = "change a removable medium, optional format",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_change,
-    },
-
-SQMP
 change
 ------
 
@@ -150,18 +109,6 @@ Examples:
                             "arg": "foobar1" } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "screendump",
-        .args_type  = "filename:F",
-        .params     = "filename",
-        .help       = "save screen into PPM image 'filename'",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_screen_dump,
-    },
-
-SQMP
 screendump
 ----------
 
@@ -176,18 +123,6 @@ Example:
 -> { "execute": "screendump", "arguments": { "filename": "/tmp/image" } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "stop",
-        .args_type  = "",
-        .params     = "",
-        .help       = "stop emulation",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_stop,
-    },
-
-SQMP
 stop
 ----
 
@@ -200,18 +135,6 @@ Example:
 -> { "execute": "stop" }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "cont",
-        .args_type  = "",
-        .params     = "",
-        .help       = "resume emulation",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_cont,
-    },
-
-SQMP
 cont
 ----
 
@@ -224,18 +147,6 @@ Example:
 -> { "execute": "cont" }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "system_reset",
-        .args_type  = "",
-        .params     = "",
-        .help       = "reset the system",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_system_reset,
-    },
-
-SQMP
 system_reset
 ------------
 
@@ -248,18 +159,6 @@ Example:
 -> { "execute": "system_reset" }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "system_powerdown",
-        .args_type  = "",
-        .params     = "",
-        .help       = "send system power down event",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_system_powerdown,
-    },
-
-SQMP
 system_powerdown
 ----------------
 
@@ -272,18 +171,6 @@ Example:
 -> { "execute": "system_powerdown" }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "device_add",
-        .args_type  = "device:O",
-        .params     = "driver[,prop=value][,...]",
-        .help       = "add device, like -device on the command line",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_device_add,
-    },
-
-SQMP
 device_add
 ----------
 
@@ -309,18 +196,6 @@ Notes:
 (2) It's possible to list device properties by running QEMU with the
     "-device DEVICE,\?" command-line argument, where DEVICE is the device's name
 
-EQMP
-
-    {
-        .name       = "device_del",
-        .args_type  = "id:s",
-        .params     = "device",
-        .help       = "remove device",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_device_del,
-    },
-
-SQMP
 device_del
 ----------
 
@@ -335,18 +210,6 @@ Example:
 -> { "execute": "device_del", "arguments": { "id": "net1" } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "cpu",
-        .args_type  = "index:i",
-        .params     = "index",
-        .help       = "set the default CPU",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_cpu_set,
-    },
-
-SQMP
 cpu
 ---
 
@@ -363,18 +226,6 @@ Example:
 
 Note: CPUs' indexes are obtained with the 'query-cpus' command.
 
-EQMP
-
-    {
-        .name       = "memsave",
-        .args_type  = "val:l,size:i,filename:s",
-        .params     = "addr size file",
-        .help       = "save to disk virtual memory dump starting at 'addr' of size 'size'",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_memory_save,
-    },
-
-SQMP
 memsave
 -------
 
@@ -396,18 +247,6 @@ Example:
 
 Note: Depends on the current CPU.
 
-EQMP
-
-    {
-        .name       = "pmemsave",
-        .args_type  = "val:l,size:i,filename:s",
-        .params     = "addr size file",
-        .help       = "save to disk physical memory dump starting at 'addr' of size 'size'",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_physical_memory_save,
-    },
-
-SQMP
 pmemsave
 --------
 
@@ -427,18 +266,6 @@ Example:
                             "filename": "/tmp/physical-mem-dump" } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "inject-nmi",
-        .args_type  = "",
-        .params     = "",
-        .help       = "",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_inject_nmi,
-    },
-
-SQMP
 inject-nmi
 ----------
 
@@ -454,22 +281,6 @@ Example:
 Note: inject-nmi is only supported for x86 guest currently, it will
       returns "Unsupported" error for non-x86 guest.
 
-EQMP
-
-    {
-        .name       = "migrate",
-        .args_type  = "detach:-d,blk:-b,inc:-i,uri:s",
-        .params     = "[-d] [-b] [-i] uri",
-        .help       = "migrate to URI (using -d to not wait for completion)"
-		      "\n\t\t\t -b for migration without shared storage with"
-		      " full copy of disk\n\t\t\t -i for migration without "
-		      "shared storage with incremental copy of disk "
-		      "(base image shared between src and destination)",
-        .user_print = monitor_user_noop,	
-	.mhandler.cmd_new = do_migrate,
-    },
-
-SQMP
 migrate
 -------
 
@@ -494,18 +305,6 @@ Notes:
 (3) The user Monitor's "detach" argument is invalid in QMP and should not
     be used
 
-EQMP
-
-    {
-        .name       = "migrate_cancel",
-        .args_type  = "",
-        .params     = "",
-        .help       = "cancel the current VM migration",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_migrate_cancel,
-    },
-
-SQMP
 migrate_cancel
 --------------
 
@@ -518,18 +317,6 @@ Example:
 -> { "execute": "migrate_cancel" }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "migrate_set_speed",
-        .args_type  = "value:o",
-        .params     = "value",
-        .help       = "set maximum speed (in bytes) for migrations",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_migrate_set_speed,
-    },
-
-SQMP
 migrate_set_speed
 -----------------
 
@@ -544,18 +331,6 @@ Example:
 -> { "execute": "migrate_set_speed", "arguments": { "value": 1024 } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "migrate_set_downtime",
-        .args_type  = "value:T",
-        .params     = "value",
-        .help       = "set maximum tolerated downtime (in seconds) for migrations",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_migrate_set_downtime,
-    },
-
-SQMP
 migrate_set_downtime
 --------------------
 
@@ -570,18 +345,6 @@ Example:
 -> { "execute": "migrate_set_downtime", "arguments": { "value": 0.1 } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "client_migrate_info",
-        .args_type  = "protocol:s,hostname:s,port:i?,tls-port:i?,cert-subject:s?",
-        .params     = "protocol hostname port tls-port cert-subject",
-        .help       = "send migration info to spice/vnc client",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = client_migrate_info,
-    },
-
-SQMP
 client_migrate_info
 ------------------
 
@@ -605,18 +368,6 @@ Example:
                     "port": 1234 } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "netdev_add",
-        .args_type  = "netdev:O",
-        .params     = "[user|tap|socket],id=str[,prop=value][,...]",
-        .help       = "add host network device",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_netdev_add,
-    },
-
-SQMP
 netdev_add
 ----------
 
@@ -637,18 +388,6 @@ Note: The supported device options are the same ones supported by the '-net'
       command-line argument, which are listed in the '-help' output or QEMU's
       manual
 
-EQMP
-
-    {
-        .name       = "netdev_del",
-        .args_type  = "id:s",
-        .params     = "id",
-        .help       = "remove host network device",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_netdev_del,
-    },
-
-SQMP
 netdev_del
 ----------
 
@@ -664,18 +403,6 @@ Example:
 <- { "return": {} }
 
 
-EQMP
-
-    {
-        .name       = "block_resize",
-        .args_type  = "device:B,size:o",
-        .params     = "device size",
-        .help       = "resize a block image",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_block_resize,
-    },
-
-SQMP
 block_resize
 ------------
 
@@ -691,17 +418,6 @@ Example:
 -> { "execute": "block_resize", "arguments": { "device": "scratch", "size": 1073741824 } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "blockdev-snapshot-sync",
-        .args_type  = "device:B,snapshot-file:s?,format:s?",
-        .params     = "device [new-image-file] [format]",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_snapshot_blkdev,
-    },
-
-SQMP
 blockdev-snapshot-sync
 ----------------------
 
@@ -725,19 +441,6 @@ Example:
                                                     "format": "qcow2" } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "balloon",
-        .args_type  = "value:M",
-        .params     = "target",
-        .help       = "request VM to change its memory allocation (in MB)",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_async = do_balloon,
-        .flags      = MONITOR_CMD_ASYNC,
-    },
-
-SQMP
 balloon
 -------
 
@@ -752,18 +455,6 @@ Example:
 -> { "execute": "balloon", "arguments": { "value": 536870912 } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "set_link",
-        .args_type  = "name:s,up:b",
-        .params     = "name on|off",
-        .help       = "change the link status of a network adapter",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_set_link,
-    },
-
-SQMP
 set_link
 --------
 
@@ -779,18 +470,6 @@ Example:
 -> { "execute": "set_link", "arguments": { "name": "e1000.0", "up": false } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "getfd",
-        .args_type  = "fdname:s",
-        .params     = "getfd name",
-        .help       = "receive a file descriptor via SCM rights and assign it a name",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_getfd,
-    },
-
-SQMP
 getfd
 -----
 
@@ -805,18 +484,6 @@ Example:
 -> { "execute": "getfd", "arguments": { "fdname": "fd1" } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "closefd",
-        .args_type  = "fdname:s",
-        .params     = "closefd name",
-        .help       = "close a file descriptor previously passed via SCM rights",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_closefd,
-    },
-
-SQMP
 closefd
 -------
 
@@ -831,18 +498,6 @@ Example:
 -> { "execute": "closefd", "arguments": { "fdname": "fd1" } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "block_passwd",
-        .args_type  = "device:B,password:s",
-        .params     = "block_passwd device password",
-        .help       = "set the password of encrypted block devices",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_block_set_passwd,
-    },
-
-SQMP
 block_passwd
 ------------
 
@@ -859,18 +514,6 @@ Example:
                                                "password": "12345" } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "set_password",
-        .args_type  = "protocol:s,password:s,connected:s?",
-        .params     = "protocol password action-if-connected",
-        .help       = "set spice/vnc password",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = set_password,
-    },
-
-SQMP
 set_password
 ------------
 
@@ -888,18 +531,6 @@ Example:
                                                "password": "secret" } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "expire_password",
-        .args_type  = "protocol:s,time:s",
-        .params     = "protocol time",
-        .help       = "set spice/vnc password expire-time",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = expire_password,
-    },
-
-SQMP
 expire_password
 ---------------
 
@@ -916,18 +547,6 @@ Example:
                                                   "time": "+60" } }
 <- { "return": {} }
 
-EQMP
-
-    {
-        .name       = "add_client",
-        .args_type  = "protocol:s,fdname:s,skipauth:b?",
-        .params     = "protocol fdname skipauth",
-        .help       = "add a graphics client",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = add_graphics_client,
-    },
-
-SQMP
 add_client
 ----------
 
@@ -944,17 +563,6 @@ Example:
                                              "fdname": "myclient" } }
 <- { "return": {} }
 
-EQMP
-    {
-        .name       = "qmp_capabilities",
-        .args_type  = "",
-        .params     = "",
-        .help       = "enable QMP capabilities",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_qmp_capabilities,
-    },
-
-SQMP
 qmp_capabilities
 ----------------
 
@@ -969,18 +577,6 @@ Example:
 
 Note: This command must be issued before issuing any other command.
 
-EQMP
-
-    {
-        .name       = "human-monitor-command",
-        .args_type  = "command-line:s,cpu-index:i?",
-        .params     = "",
-        .help       = "",
-        .user_print = monitor_user_noop,
-        .mhandler.cmd_new = do_hmp_passthrough,
-    },
-
-SQMP
 human-monitor-command
 ---------------------
 
@@ -997,7 +593,8 @@ Arguments:
 Example:
 
 -> { "execute": "human-monitor-command", "arguments": { "command-line": "info kvm" } }
-<- { "return": "kvm support: enabled\r\n" }
+<- { "return": "kvm support: enabled
+" }
 
 Notes:
 
@@ -1017,13 +614,7 @@ Notes:
 3. Query Commands
 =================
 
-HXCOMM Each query command below is inside a SQMP/EQMP section, do NOT change
-HXCOMM this! We will possibly move query commands definitions inside those
-HXCOMM sections, just like regular commands.
 
-EQMP
-
-SQMP
 query-version
 -------------
 
@@ -1051,9 +642,6 @@ Example:
       }
    }
 
-EQMP
-
-SQMP
 query-commands
 --------------
 
@@ -1082,9 +670,6 @@ Example:
 
 Note: This example has been shortened as the real response is too long.
 
-EQMP
-
-SQMP
 query-chardev
 -------------
 
@@ -1112,9 +697,6 @@ Example:
       ]
    }
 
-EQMP
-
-SQMP
 query-block
 -----------
 
@@ -1182,9 +764,6 @@ Example:
       ]
    }
 
-EQMP
-
-SQMP
 query-blockstats
 ----------------
 
@@ -1265,9 +844,6 @@ Example:
       ]
    }
 
-EQMP
-
-SQMP
 query-cpus
 ----------
 
@@ -1307,9 +883,6 @@ Example:
       ]
    }
 
-EQMP
-
-SQMP
 query-pci
 ---------
 
@@ -1518,9 +1091,6 @@ Example:
 
 Note: This example has been shortened as the real response is too long.
 
-EQMP
-
-SQMP
 query-kvm
 ---------
 
@@ -1536,9 +1106,6 @@ Example:
 -> { "execute": "query-kvm" }
 <- { "return": { "enabled": true, "present": true } }
 
-EQMP
-
-SQMP
 query-status
 ------------
 
@@ -1553,9 +1120,6 @@ Example:
 -> { "execute": "query-status" }
 <- { "return": { "running": true, "singlestep": false } }
 
-EQMP
-
-SQMP
 query-mice
 ----------
 
@@ -1591,9 +1155,6 @@ Example:
       ]
    }
 
-EQMP
-
-SQMP
 query-vnc
 ---------
 
@@ -1648,9 +1209,6 @@ Example:
       }
    }
 
-EQMP
-
-SQMP
 query-spice
 -----------
 
@@ -1718,9 +1276,6 @@ Example:
       }
    }
 
-EQMP
-
-SQMP
 query-name
 ----------
 
@@ -1735,9 +1290,6 @@ Example:
 -> { "execute": "query-name" }
 <- { "return": { "name": "qemu-name" } }
 
-EQMP
-
-SQMP
 query-uuid
 ----------
 
@@ -1752,9 +1304,6 @@ Example:
 -> { "execute": "query-uuid" }
 <- { "return": { "UUID": "550e8400-e29b-41d4-a716-446655440000" } }
 
-EQMP
-
-SQMP
 query-migrate
 -------------
 
@@ -1829,9 +1378,6 @@ Examples:
       }
    }
 
-EQMP
-
-SQMP
 query-balloon
 -------------
 
@@ -1864,9 +1410,6 @@ Example:
       }
    }
 
-EQMP
-
-SQMP
 query-cyclecount
 -----------------
 
@@ -1888,9 +1431,6 @@ Example:
 	  } 
    }
 
-EQMP
-
-SQMP
 query-energy
 ------------
 
@@ -1910,4 +1450,3 @@ Example:
 	 }
    }
 
-EQMP
