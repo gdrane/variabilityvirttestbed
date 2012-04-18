@@ -15,7 +15,7 @@
 #include "i2c.h"
 #include "net.h"
 #include "boards.h"
-
+#include "stellaris_instruction_map.h"
 #define GPIO_A 0
 #define GPIO_B 1
 #define GPIO_C 2
@@ -1162,6 +1162,93 @@ static int stellaris_ssi_bus_init(SSISlave *dev)
     return 0;
 }
 
+struct StellarisVarModuleState {
+	SysBusDevice busdev; 
+	qemu_irq irq;
+};
+
+static void stellaris_var_mod_reset(struct StellarisVarModuleState *s) {
+	reset_all_cycle_counters();
+}
+
+static uint32_t stellaris_var_mod_read(void* opaque, target_phys_addr_t offset)
+{	
+	//struct PXA27xVarModuleState* s = (struct PXA27xVarModuleState*) opaque;
+	struct cycle_counter cy;
+	read_all_cycle_counters(&cy);
+	switch(offset)
+	{
+		case 0x00:// Lower 32 Data Proc Cycles
+					return (uint32_t) (cy.data_proc_cycles);	
+		case 0x04: // Upper 32 Data Proc Cycles
+					return (uint32_t) (cy.data_proc_cycles >> 32);
+					
+		case 0x08: // Lower 32 Branch Cycles
+					return (uint32_t) (cy.branch_cycles);
+					
+		case 0x0c:	// Upper 32 Branch Cycles
+					return (uint32_t) (cy.branch_cycles >> 32);
+
+		case 0x10: // Lower 32 Multiply Cycles
+					return (uint32_t) (cy.multiply_cycles);
+					
+		case 0x14: // Upper 32 Multiple Cycles
+					return (uint32_t) (cy.multiply_cycles >> 32);
+
+		case 0x18: // Lower 32 Load-Store Cycles
+					return (uint32_t) (cy.ldst_cycles);
+
+		case 0x1c: // Upper 32 Load-Store Cycles
+					return (uint32_t) (cy.ldst_cycles >> 32);
+
+		case 0x20: // Lower 32 Miscellaneous Cycles
+					return (uint32_t) (cy.misc_cycles);
+
+		case 0x24: // Upper 32 Miscellaneous Cycles
+					return (uint32_t) (cy.misc_cycles >> 32);
+
+	}
+	return (uint32_t)0;
+
+}
+
+static void stellaris_var_mod_write(void *opaque, target_phys_addr_t offset, uint32_t value)
+{
+
+	printf("You cannot write to variability module register \n");
+	
+	// TODO(gdrane): Throw some exception if tried to write the device	
+}
+
+static CPUReadMemoryFunc* const stellaris_var_mod_readfn[] = {
+	stellaris_var_mod_read,
+	stellaris_var_mod_read,
+	stellaris_var_mod_read,
+};
+
+static CPUWriteMemoryFunc* const stellaris_var_mod_writefn[] = {
+	stellaris_var_mod_write,
+	stellaris_var_mod_write,
+	stellaris_var_mod_write,
+};
+
+static int stellaris_var_mod_init(SysBusDevice *dev)
+{	
+
+		int iomemtype;
+		struct StellarisVarModuleState *s = 
+		(struct StellarisVarModuleState*) qemu_mallocz(sizeof(struct StellarisVarModuleState));
+    	sysbus_init_irq(dev, &s->irq);
+		stellaris_var_mod_reset(s);
+		iomemtype = cpu_register_io_memory(stellaris_var_mod_readfn,
+					stellaris_var_mod_writefn, s, DEVICE_NATIVE_ENDIAN);
+		sysbus_init_mmio(dev, 0x1000, iomemtype);
+		// printf("\n Stellaris Variability Module Initialized");
+		return 0;
+}
+
+
+
 /* Board init.  */
 static stellaris_board_info stellaris_boards[] = {
   { "LM3S811EVB",
@@ -1195,7 +1282,6 @@ static void stellaris_init(const char *kernel_filename, const char *cpu_model,
       { 0x40004000, 0x40005000, 0x40006000, 0x40007000,
         0x40024000, 0x40025000, 0x40026000};
     static const int gpio_irq[7] = {0, 1, 2, 3, 4, 30, 31};
-
     qemu_irq *pic;
     DeviceState *gpio_dev[7];
     qemu_irq gpio_in[7][8];
@@ -1207,7 +1293,8 @@ static void stellaris_init(const char *kernel_filename, const char *cpu_model,
     DeviceState *dev;
     int i;
     int j;
-
+	
+	init_stellaris_instruction_set_map();
     flash_size = ((board->dc0 & 0xffff) + 1) << 1;
     sram_size = (board->dc0 >> 18) + 1;
     pic = armv7m_init(flash_size, sram_size, kernel_filename, cpu_model);
@@ -1301,6 +1388,10 @@ static void stellaris_init(const char *kernel_filename, const char *cpu_model,
 
         stellaris_gamepad_init(5, gpad_irq, gpad_keycode);
     }
+
+	// Variability Module
+	// sysbus_create_simple("stellaris_var_mod", 0x40022000, pic[9]);
+	
     for (i = 0; i < 7; i++) {
         if (board->dc4 & (1 << i)) {
             for (j = 0; j < 8; j++) {
@@ -1365,6 +1456,8 @@ static void stellaris_register_devices(void)
     sysbus_register_dev("stellaris-adc", sizeof(stellaris_adc_state),
                         stellaris_adc_init);
     ssi_register_slave(&stellaris_ssi_bus_info);
+	// sysbus_register_dev("stellaris_var_mod", sizeof(struct StellarisVarModuleState),
+	//					stellaris_var_mod_init);
 }
 
 device_init(stellaris_register_devices)

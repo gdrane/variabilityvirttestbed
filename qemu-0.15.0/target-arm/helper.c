@@ -681,7 +681,6 @@ void switch_mode(CPUState *env, int mode)
 
 static void v7m_push(CPUARMState *env, uint32_t val)
 {
-	printf("Pushing values in stack:%d\n", val);
     env->regs[13] -= 4;
     stl_phys(env->regs[13], val);
 }
@@ -691,7 +690,6 @@ static uint32_t v7m_pop(CPUARMState *env)
     uint32_t val;
     val = ldl_phys(env->regs[13]);
     env->regs[13] += 4;
-	printf("Popped value from stack: %d\n", val);
     return val;
 }
 

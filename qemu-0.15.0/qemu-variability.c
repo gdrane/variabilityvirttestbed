@@ -28,6 +28,7 @@ void reset_all_cycle_counters(void)
 
 void increment_cycle_counters(TranslationBlock* tb)
 {
+//	printf("Data Processing Cycle : %llu, Branch Cycle Count: %llu, Multiply Cycle Count: %llu, LDST Cycle Count: %llu, Misc Cycle Count: %llu\n", total_data_proc_cycle_count, total_branch_cycle_count, total_multiply_cycle_count, total_ldst_cycle_count, total_misc_cycle_count);
 	// TODO(gdrane): Take lock before accessing
 	total_data_proc_cycle_count += tb->data_proc_cycle_count;
 	total_branch_cycle_count += tb->branch_cycle_count;

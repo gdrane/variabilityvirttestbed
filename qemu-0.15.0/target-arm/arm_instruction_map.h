@@ -11,13 +11,15 @@
 #define LDST_ISN 4			// Load Store Instructions
 #define MISC_ISN 5			// Miscellaneous Instructions
 #define EXTENDED_LDST_ISN 6
-#define INSTRUCTIONS_AVAILABLE 95
+#define INSTRUCTIONS_AVAILABLE 106
 
 // extern struct variability_instruction_set* insn_map;
 
 void init_arm_instruction_set_map(void);
 void increment_cycle_counter(TranslationBlock* tb, struct variability_instruction_set*s);
 struct variability_instruction_set* get_map_entry(const char* instruction);
+
+uint64_t get_cycle_count(char* instruction);
 
 extern struct variability_instruction_set arm_instructions [];
 /*

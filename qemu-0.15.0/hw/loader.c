@@ -687,7 +687,6 @@ int rom_load_all(void)
                     rom->name, addr, rom->addr);
             return -1;
         }
-		printf("\nRom Address: %x, Size : %d\n", rom->addr, rom->romsize);
         addr  = rom->addr;
         addr += rom->romsize;
         memtype = cpu_get_physical_page_desc(rom->addr) & (3 << IO_MEM_SHIFT);

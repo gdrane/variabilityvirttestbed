@@ -2170,7 +2170,7 @@ PXA2xxState *pxa270_init(unsigned int sdram_size, const char *revision)
         exit(1);
     }
 	// Initialize instruction set map in for variability
-	init_instruction_set_map();	
+	// init_pxa_instruction_set_map();	
     s->reset = qemu_allocate_irqs(pxa2xx_reset, s, 1)[0];
 
     /* SDRAM & Internal Memory Storage */

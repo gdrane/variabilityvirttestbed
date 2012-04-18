@@ -1053,7 +1053,6 @@ int qemu_register_machine(QEMUMachine *m)
 static QEMUMachine *find_machine(const char *name)
 {
     QEMUMachine *m;
-   	printf("First Machine : %s\n", first_machine->name); 
     for(m = first_machine; m != NULL; m = m->next) {
         if (!strcmp(m->name, name))
             return m;
@@ -2103,7 +2102,6 @@ int main(int argc, char **argv, char **envp)
     os_setup_early_signal_handling();
 
     module_call_init(MODULE_INIT_MACHINE);
-	printf("Completed initializing machine");
     machine = find_default_machine();
     cpu_model = NULL;
     initrd_filename = NULL;

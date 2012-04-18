@@ -3,21 +3,9 @@
 #define PXA_INSTRUCTION_CYCLE_MAP_H
 #include "target-arm/arm_instruction_map.h"
 
-void init_instruction_set_map(void);
-uint64_t get_cycle_count(char* instruction);
+void init_pxa_instruction_set_map(void);
 
-struct variability_instruction_set* get_map_entry(const char* instruction)
-{
-	int i;
-	for(i = 0;i < INSTRUCTIONS_AVAILABLE; ++i)
-	{
-		if(strcmp(insn_map[i].instruction,instruction) == 0)
-			return &insn_map[i];
-	}
-	return NULL;
-}
-
-void init_instruction_set_map(void)
+void init_pxa_instruction_set_map(void)
 {
 	
 	insn_map = (struct variability_instruction_set*) arm_instructions;
@@ -132,17 +120,4 @@ void init_instruction_set_map(void)
 	// init_arm_instruction_set_map();
 }
 
-uint64_t get_cycle_count(char* instruction)
-{
-	struct variability_instruction_set* p = get_map_entry(instruction);
-	if(p == NULL)
-	{
-		printf("Illegal instruction sent");
-		return 0;
-	} else if(p->cycle_count == 0)
-		printf("Instruction map not initialized");
-	// TODO(gdrane): Put an exception like illegal instruction to get 
-	// out of here.
-	return p->cycle_count;
-}
 #endif

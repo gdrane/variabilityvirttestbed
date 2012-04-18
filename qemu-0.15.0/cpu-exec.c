@@ -21,7 +21,7 @@
 #include "disas.h"
 #include "tcg.h"
 #include "qemu-barrier.h"
-#include "qemu-variability.h"
+//#include "qemu-variability.h"
 
 int tb_invalidated_flag;
 
@@ -554,7 +554,7 @@ int cpu_exec(CPUState *env)
                 barrier();
                 if (likely(!env->exit_request)) {
                     tc_ptr = tb->tc_ptr;
-                	increment_cycle_counters(tb);
+                	// increment_cycle_counters(tb);
 				/* execute the generated code */
                     next_tb = tcg_qemu_tb_exec(env, tc_ptr);
                     if ((next_tb & 3) == 2) {
