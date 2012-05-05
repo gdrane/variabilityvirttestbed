@@ -73,6 +73,7 @@ void init_versatilepb_instruction_set_map(void)
 	get_map_entry("CLREX")->cycle_count = 1;
 	get_map_entry("B")->cycle_count = 3;
 	get_map_entry("BLX_reg")->cycle_count = 3;
+	get_map_entry("BLX_imm")->cycle_count = 3;
 	get_map_entry("BL")->cycle_count = 3;
 	get_map_entry("BX")->cycle_count = 3;
 	get_map_entry("BFI")->cycle_count = 1;

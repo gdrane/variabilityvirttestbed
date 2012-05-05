@@ -1,3 +1,4 @@
+// author Gauresh D Rane(gdrane@cs.ucla.edu)
 #include "qemu-variability.h"
 #include "qemu-timer.h"
 #include "qjson.h"
@@ -132,7 +133,7 @@ void read_all_prev_energy(struct energy_counter *s)
 void start_sleep_cycle_count(void) 
 {
 	sleep_start_time = qemu_get_clock_ns(vm_clock);
-	printf("Started Sleep Cycle Count: %lld\n", sleep_start_time);
+	// printf("Started Sleep Cycle Count: %lld\n", sleep_start_time);
 	started_sleep_count = true;
 	if(curr_power_model != NULL)
 		curr_power_model->sleep_start_notify();	
@@ -142,7 +143,7 @@ void stop_sleep_cycle_count(void)
 {
 	if(started_sleep_count)
 	{
-		printf("Stop Sleep Time passed %lld \n", (qemu_get_clock_ns(vm_clock) - sleep_start_time));
+	//	printf("Stop Sleep Time passed %lld \n", (qemu_get_clock_ns(vm_clock) - sleep_start_time));
 		if(curr_power_model != NULL)
 			curr_power_model->sleep_stop_notify(qemu_get_clock_ns(vm_clock) - sleep_start_time);
 		started_sleep_count = false;

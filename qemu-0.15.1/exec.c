@@ -652,6 +652,9 @@ void cpu_exec_init(CPUState *env)
     register_savevm(NULL, "cpu", cpu_index, CPU_SAVE_VERSION,
                     cpu_save, cpu_load, env);
 #endif
+	// Added (gdrane)
+	 //cpu_single_step(env, 1);	
+
 }
 
 /* Allocate a new translation block. Flush the translation buffer if

@@ -1,11 +1,12 @@
 #include "arm_instruction_map.h"
-void init_arm_instruction_set_map(void)
+void init_instruction_set_map(void)
 {
  	insn_map = (struct variability_instruction_set*)arm_instructions;
 }
 
-void increment_cycle_counter(TranslationBlock* tb, struct variability_instruction_set* s)
+void increment_cycle_counter(void* tbptr, struct variability_instruction_set* s)
 {
+	TranslationBlock* tb = (TranslationBlock*) tbptr;
 	//printf("Incrementing cycle counter for current tb\n");
 	if(s == NULL || tb == NULL)
 		return ;

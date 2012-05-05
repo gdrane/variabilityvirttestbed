@@ -238,7 +238,8 @@ int cpu_exec(CPUState *env)
                     /* exit request from the cpu execution loop */
                     ret = env->exception_index;
                     if (ret == EXCP_DEBUG) {
-                        cpu_handle_debug_exception(env);
+                        printf("Hi\n");
+						cpu_handle_debug_exception(env);
                     }
                     break;
                 } else {
@@ -522,9 +523,9 @@ int cpu_exec(CPUState *env)
 #endif
                 }
 #endif /* DEBUG_DISAS || CONFIG_DEBUG_EXEC */
-                spin_lock(&tb_lock);
+				spin_lock(&tb_lock);
                 tb = tb_find_fast(env);
-                /* Note: we do it here to avoid a gcc bug on Mac OS X when
+				/* Note: we do it here to avoid a gcc bug on Mac OS X when
                    doing it in tb_find_slow */
                 if (tb_invalidated_flag) {
                     /* as some TB could have been invalidated because
@@ -545,6 +546,13 @@ int cpu_exec(CPUState *env)
                     tb_add_jump((TranslationBlock *)(next_tb & ~3), next_tb & 3, tb);
                 }
                 spin_unlock(&tb_lock);
+
+				if(tb->icount == 1 && tb->insn_under_exec < MAX_INSTRUCTIONS 
+					&& skip_instruction(env, tb)) {
+					if(env->exit_request)
+						env->current_tb = NULL;
+					continue;
+				}
 
                 /* cpu_interrupt might be called while translating the
                    TB, but before it is linked into a potentially

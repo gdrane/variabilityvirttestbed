@@ -96,6 +96,7 @@
 #ifdef CONFIG_SDL
 #if defined(__APPLE__) || defined(main)
 #include <SDL.h>
+
 int qemu_main(int argc, char **argv, char **envp);
 int main(int argc, char **argv)
 {
@@ -1033,6 +1034,20 @@ void pcmcia_info(Monitor *mon)
                        "Empty");
 }
 
+/***********************************************************/
+/* Variability Extensions */
+// #ifdef  VARIABILITY_EXTENSIONS
+extern void init_instruction_set_map(void);
+extern struct variability_instruction_set* get_map_entry(const char*);
+
+static int parse_variability_file(const char *fname)
+{
+	FILE *fp;
+	fp = fopen(fname, "r");
+	fclose(fp);		
+	return 0;
+}
+// #endif
 /***********************************************************/
 /* machine registration */
 
@@ -2092,6 +2107,10 @@ int main(int argc, char **argv, char **envp)
     const char *trace_file = NULL;
     const char *log_mask = NULL;
     const char *log_file = NULL;
+	
+	// #define VARIABILITY_EXTENSIONS
+	const char *variability_filename;
+	// #endif
 
     atexit(qemu_run_exit_notifiers);
     error_set_progname(argv[0]);
@@ -2925,13 +2944,18 @@ int main(int argc, char **argv, char **envp)
                     fclose(fp);
                     break;
                 }
+			case QEMU_OPTION_variability:
+				{
+					init_instruction_set_map();
+					variability_filename = optarg;
+					parse_variability_file(variability_filename);
+				}
             default:
                 os_parse_cmd_args(popt->index, optarg);
             }
         }
     }
     loc_set_none();
-
     /* Open the logfile at this point, if necessary. We can't open the logfile
      * when encountering either of the logging options (-d or -D) because the
      * other one may be encountered later on the command line, changing the

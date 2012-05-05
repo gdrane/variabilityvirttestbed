@@ -157,7 +157,7 @@ struct TranslationBlock {
     struct TranslationBlock *jmp_next[2];
     struct TranslationBlock *jmp_first;
     uint32_t icount;
-	//#ifdef VARIABILITY_EXTENSIONS
+	// #ifdef VARIABILITY_EXTENSIONS
 	// Keeps track cpu cycles of data processing intructions executed
 	uint64_t data_proc_cycle_count;
 	// Keeps track of cpu cycles for branch instruction execution
@@ -173,6 +173,9 @@ struct TranslationBlock {
 	// 3. Exception generating instructions
 	// 4. Instruction included in the extended instruction set
 	uint64_t misc_cycle_count;
+	// Gives the current instruction under execution
+	uint16_t insn_under_exec;
+	int32_t args[8];
 	// #endif
 };
 

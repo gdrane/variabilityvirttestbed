@@ -1332,7 +1332,6 @@ static void stellaris_init(const char *kernel_filename, const char *cpu_model,
     int i;
     int j;
 	ssys_state *sys_cntrl;
-
 	init_stellaris_instruction_set_map();
     flash_size = ((board->dc0 & 0xffff) + 1) << 1;
     sram_size = (board->dc0 >> 18) + 1;

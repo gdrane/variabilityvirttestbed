@@ -5,6 +5,8 @@
 #include "qemu-common.h"
 #include "power-model.h"
 
+#define MAX_INSTRUCTIONS ((1 << 16) - 1)
+
 struct cycle_counter
 {
 	uint64_t data_proc_cycles;
@@ -19,6 +21,7 @@ struct variability_instruction_set
 	char instruction[15];
 	uint8_t cycle_count;
 	uint8_t instruction_type;
+	bool errorneous;
 };
 
 struct energy_counter
@@ -32,6 +35,9 @@ struct energy_counter
 };
 
 struct variability_instruction_set* insn_map;
+void init_instruction_set_map(void);
+void increment_cycle_counter(void* tbptr, struct variability_instruction_set* s);
+struct variability_instruction_set* get_map_entry(const char* instruction);
 
 void reset_all_cycle_counters(void);
 void increment_cycle_counters(void* tb);
@@ -49,5 +55,8 @@ uint64_t read_sleep_energy(void);
 void power_model_init(PowerModel *pwr_model);
 void calculate_sleep_energy(struct energy_counter *s);
 void calculate_active_energy(struct energy_counter *s);
+
+// Error stuff
+bool skip_instruction(CPUState* env, TranslationBlock* tb);
 
 #endif
