@@ -59,6 +59,7 @@ for insn_class in insn_classes:
 	insn_class_info[insn_class] = choices
 	for choice in choices:
 		for_class.remove(choice)
+insn_class_info['rest'] = for_class
 insn_error_info = {}
 msg = 'Select Errorneous instructions '
 choices = eg.multchoicebox(msg, '', insns)
