@@ -34,7 +34,12 @@ struct energy_counter
 	uint64_t sleep_energy;
 };
 
+
 struct variability_instruction_set* insn_map;
+extern QDict* class_info;
+extern bool error_pc_enabled, error_icount_enabled;
+extern int error_pc_info[], error_icount_info[];
+
 void init_instruction_set_map(void);
 void increment_cycle_counter(void* tbptr, struct variability_instruction_set* s);
 struct variability_instruction_set* get_map_entry(const char* instruction);
@@ -59,4 +64,11 @@ void calculate_active_energy(struct energy_counter *s);
 // Error stuff
 bool skip_instruction(CPUState* env, TranslationBlock* tb);
 
+// Command Line Parameters Stuff
+void class_info_init(QDict* qdict);
+QDict* get_class_info_ptr(void);
+void update_insn_class_info(const char* class_idx, const char* insn);
+void update_insn_error_info(const char* err_val, const char* insn);
+void error_init_pc(int start_pc, int end_pc);
+void error_init_icount(int start_icount, int end_icount);
 #endif

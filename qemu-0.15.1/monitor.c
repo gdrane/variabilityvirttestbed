@@ -1280,8 +1280,14 @@ static void do_singlestep(Monitor *mon, const QDict *qdict)
     const char *option = qdict_get_try_str(qdict, "option");
     if (!option || !strcmp(option, "on")) {
         singlestep = 1;
+		// #ifdef VARIABILITY_EXTENSIONS
+		allthru_singlestep = true;
+		// #endif
     } else if (!strcmp(option, "off")) {
         singlestep = 0;
+		// #ifdef VARIABILITY_EXTENSIONS
+		allthru_singlestep = false;
+		// #endif
     } else {
         monitor_printf(mon, "unexpected option %s\n", option);
     }

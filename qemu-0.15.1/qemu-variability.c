@@ -33,6 +33,10 @@ static int64_t sleep_start_time = 0;
 static uint64_t sleep_energy = 0;
 PowerModel *curr_power_model = NULL;
 
+QDict* class_info = NULL;
+bool error_pc_enabled = false, error_icount_enabled = false;
+int error_pc_info[2] = {0};
+int error_icount_info[2] = {0};
 
 static void accumulate_energy(struct energy_counter *s);
 
@@ -224,4 +228,63 @@ void do_info_energy(Monitor *mon, QObject **ret_data)
 void monitor_print_variability(Monitor *mon, const QObject *ret)
 {
 
+}
+
+void class_info_init(QDict* qdict)
+{
+	class_info = qdict;
+}
+
+QDict* get_class_info_ptr(void)
+{
+	return class_info;
+}
+
+void update_insn_class_info(const char* class_idx, const char* insn)
+{
+	// Assuming class indexes are positive
+	const QDictEntry* pentry;
+	int64_t idx= -1;
+	assert(class_info != NULL);
+	pentry = qdict_first(class_info);
+	do
+	{
+		QObject* temp = qdict_entry_value(pentry);		
+		QDict* pdict = qobject_to_qdict(temp);
+		idx = qdict_get_int(pdict, "idx");
+		const char * str = qdict_get_str(pdict, "class_name");
+		if(strcmp(str, class_idx) == 0)
+			break;
+		idx = -1;
+		pentry = qdict_next(class_info, pentry);
+	} while(pentry != NULL);
+	assert(insn_map != NULL);
+	if(idx != -1)
+		get_map_entry(insn)->instruction_type = idx;
+}
+
+void update_insn_error_info(const char* boolstr, const char* insn)
+{
+	if(strcmp(boolstr, "y") == 0)
+		get_map_entry(insn)->errorneous = 1;
+	else 
+		get_map_entry(insn)->errorneous = 0;
+}
+
+void error_init_pc(int start_pc, int end_pc)
+{
+	assert((start_pc > 0) && (end_pc > 0));
+	assert(start_pc < end_pc);
+	error_pc_enabled = true;
+	error_pc_info[0] = start_pc;
+	error_pc_info[1] = end_pc;
+}
+
+void error_init_icount(int start_icount, int end_icount)
+{
+	assert((start_icount > 0) && (end_icount > 0));
+	assert(start_icount < end_icount);
+	error_icount_enabled = true;
+	error_icount_info[0] = start_icount;
+	error_icount_info[1] = end_icount;
 }

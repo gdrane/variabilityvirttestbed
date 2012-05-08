@@ -14,32 +14,25 @@ i = 1
 variability_input = {}
 insn_classes = []
 while i <= total_insn_classes:
-	msg = 'Enter Instruction Class Information'
-	fieldNames = ["Name of Instruction Class", "a", "b"]
-	fieldValues = eg.multenterbox(msg, '', fieldNames)
-	print fieldValues
-	while 1:
-		if fieldValues == None: break
-		errmsg = ""
-		for j in range(len(fieldNames)):
-			if fieldValues[i].strip() == "":
-				errmsg += ('"%s" is a required field.\n\n' % fieldNames[i])
-		if errmsg == "":
-			break
-		fieldValues = eg.multenterbox(errmsg, '', fieldNames, fieldValues)
+	fieldValue = eg.enterbox('Enter Name of the Instruction Class')
+	powerNames = []
+	for j in range(total_model_params) :
+		powerNames.append('Constant ' + str(j))
+	powerConsts = eg.multenterbox('Enter Power Constant Values', '', powerNames)
 	insn_class_input = {}
 	insn_class_input['idx'] = i
-	insn_class_input['class_name'] = fieldValues[0].strip()
-	insn_classes.append(fieldValues[0].strip())
-	insn_class_input['a'] = fieldValues[1].strip()
-	insn_class_input['b'] = fieldValues[2].strip()
+	insn_class_input['class_name'] = fieldValue.strip()
+	insn_classes.append(fieldValue.strip())
+	insn_class_input['power_const'] = powerConsts
 	variability_input[i] = insn_class_input
 	i = i + 1
 insn_class_input = {}
 insn_class_input['idx'] = i
 insn_class_input['class_name'] = 'rest'
-insn_class_input['a'] = 0
-insn_class_input['b'] = 0
+powerConsts = []
+for j in range(total_model_params) :
+	powerConsts.append(0)
+insn_class_input['power_const'] = powerConsts
 variability_input[i] = insn_class_input
 power_params = json.dumps(variability_input)
 arch_name = eg.enterbox('Enter Name of Architecture')
@@ -50,6 +43,7 @@ i = 1
 insn_class_info = {}
 insns = []
 for insn in fh:
+	insn = insn[:-1]
 	insns.append(insn)
 fh.close()
 for_class = insns[:]
@@ -87,6 +81,18 @@ for insn in fh:
 	instruction['error_insn'] = choice
 	insn_info[i] = instruction 
 """
+error_info = {}
+msg = 'Enter Error Information'
+fieldNames = ['start icount', 'end icount', 'start program counter', 'end program counter']
+fieldValues = eg.multenterbox(msg, '', fieldNames)
+if fieldValues[0].strip() != "":
+	error_info['start_icount'] = int(fieldValues[0].strip())
+if fieldValues[1].strip() != "":
+	error_info['end_icount'] = int(fieldValues[1].strip())
+if fieldValues[2].strip() != "":
+	error_info['start_pc'] = int(fieldValues[2].strip())
+if fieldValues[3].strip() != "":
+	error_info['end_pc'] = int(fieldValues[3].strip())
 insn_class_params = json.dumps(insn_class_info)
 insn_error_params = json.dumps(insn_error_info)
 file_handle = open('./variability_input_data.txt', 'w')
@@ -95,6 +101,8 @@ file_handle.write('\n')
 file_handle.write(insn_class_params)
 file_handle.write('\n')
 file_handle.write(insn_error_params)
+file_handle.write('\n')
+file_handle.write(json.dumps(error_info))
 file_handle.close()
 
 #eg.msgbox(data_string)

@@ -107,7 +107,9 @@ static uint16_t variability_counters_manip(TranslationBlock* tb, const char* ins
 {
 	struct variability_instruction_set* s = get_map_entry(instruction);
 	increment_cycle_counter(tb, s);
-	return s - insn_map;
+	if(s->errorneous == 1)
+		return s - insn_map;
+	return MAX_INSTRUCTIONS;
 }
 
 static void no_args(TranslationBlock *tb)
@@ -10635,6 +10637,27 @@ static inline void gen_intermediate_code_internal(CPUState *env,
          * Also stop translation when a page boundary is reached.  This
          * ensures prefetch aborts occur at the right place.  */
         num_insns ++;
+		// #ifdef VARIABILITY_EXTENSIONS
+		if(error_pc_enabled == true && !allthru_singlestep)
+		{
+			if(dc->pc > error_pc_info[0] && dc->pc < error_pc_info[1])
+				singlestep = 1;
+			else {
+				singlestep = 0;
+				error_pc_enabled = false;
+			}	
+		}
+
+		if(error_icount_enabled == true && !allthru_singlestep)
+		{
+			if(dc->pc > error_icount_info[0] && dc->pc < error_icount_info[1])
+				singlestep = 1;
+			else {
+				singlestep = 0;
+				error_icount_enabled = false;
+			}
+		}
+		// #endif
     } while (!dc->is_jmp && gen_opc_ptr < gen_opc_end &&
              !env->singlestep_enabled &&
              !singlestep &&

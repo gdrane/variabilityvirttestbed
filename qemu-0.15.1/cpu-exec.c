@@ -548,9 +548,7 @@ int cpu_exec(CPUState *env)
                 spin_unlock(&tb_lock);
 
 				if(tb->icount == 1 && tb->insn_under_exec < MAX_INSTRUCTIONS 
-					&& skip_instruction(env, tb)) {
-					if(env->exit_request)
-						env->current_tb = NULL;
+					&& (!env->exit_request) && skip_instruction(env, tb)) {
 					continue;
 				}
 
