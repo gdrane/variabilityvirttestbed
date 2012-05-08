@@ -4,11 +4,14 @@
 #include "qjson.h"
 #include "qint.h"
 
+uint8_t total_insn_classes = 0;
+
 static uint64_t total_data_proc_cycle_count = 0;
 static uint64_t total_branch_cycle_count = 0;
 static uint64_t total_multiply_cycle_count = 0;
 static uint64_t total_ldst_cycle_count = 0;
 static uint64_t total_misc_cycle_count = 0;
+static uint64_t total_cycle_count[MAX_INSN_CLASSES] = {0};
 // static uint64_t total_sleep_cycle_count = 0;
 
 // Prev energies, not the current one, current is calculated based on the 
@@ -18,6 +21,7 @@ static uint64_t prev_branch_insn_energy = 0;
 static uint64_t prev_multiply_insn_energy = 0;
 static uint64_t prev_ldst_insn_energy = 0;
 static uint64_t prev_misc_insn_energy = 0;
+static uint64_t prev_insn_exec_energy[MAX_INSN_CLASSES] = {0};
 
 // Cycle count Checkpoint, saved when there is a  change in frequency
 static uint64_t cycle_count_chkpt_data_proc = 0;
@@ -25,6 +29,7 @@ static uint64_t cycle_count_chkpt_branch = 0;
 static uint64_t cycle_count_chkpt_multiply = 0;
 static uint64_t cycle_count_chkpt_ldst = 0;
 static uint64_t cycle_count_chkpt_misc = 0;
+static uint64_t cycle_count_chkpt[MAX_INSN_CLASSES] = {0};
 
 // Sleep Cycle count variables
 static bool started_sleep_count = false;
@@ -43,26 +48,33 @@ static void accumulate_energy(struct energy_counter *s);
 void read_all_cycle_counters(struct cycle_counter *s)
 {
 	// TODO(gdrane): Add lock before access
+	int i;
 	s->data_proc_cycles = total_data_proc_cycle_count;
 	s->branch_cycles = total_branch_cycle_count;
 	s->multiply_cycles = total_multiply_cycle_count;
 	s->ldst_cycles = total_ldst_cycle_count;
 	s->misc_cycles = total_misc_cycle_count;
+	for(i = 0; i < total_insn_classes; ++i)
+		s->cycle_count[i] = total_cycle_count[i];		
 	//TODO(gdrane): Remove access lock
 }
 
 void reset_all_cycle_counters(void) 
 {
+	int  i;
 	total_data_proc_cycle_count = 0;
 	total_branch_cycle_count = 0;
 	total_multiply_cycle_count = 0;
 	total_ldst_cycle_count = 0;
 	total_misc_cycle_count = 0;
+	for(i = 0; i < total_insn_classes; ++i)
+		total_cycle_count[i] = 0;
 }
 
 void increment_cycle_counters(void* opaque)
 {
 	TranslationBlock* tb = (TranslationBlock*) opaque;
+	int i;
 	//printf("Data Processing Cycle : %llu, Branch Cycle Count: %llu, Multiply Cycle Count: %llu, LDST Cycle Count: %llu, Misc Cycle Count: %llu\n", total_data_proc_cycle_count, total_branch_cycle_count, total_multiply_cycle_count, total_ldst_cycle_count, total_misc_cycle_count);
 	// TODO(gdrane): Take lock before accessing
 	total_data_proc_cycle_count += tb->data_proc_cycle_count;
@@ -70,6 +82,8 @@ void increment_cycle_counters(void* opaque)
 	total_multiply_cycle_count += tb->multiply_cycle_count;
 	total_ldst_cycle_count += tb->ldst_cycle_count;
 	total_misc_cycle_count += tb->misc_cycle_count;
+	for(i = 0;i < total_insn_classes; ++i)
+		total_cycle_count[i] += tb->cycle_count[i];
 	// TODO(gdrane): Remove access lock taken
 }
 
@@ -90,16 +104,20 @@ void freq_changed_set_chkpt(struct cycle_counter *s)
 
 void read_all_cycle_counter_chkpts(struct cycle_counter *s)
 {
+	int i;
 	s->data_proc_cycles = cycle_count_chkpt_data_proc;
 	s->branch_cycles = cycle_count_chkpt_branch;
 	s->multiply_cycles = cycle_count_chkpt_multiply;
 	s->ldst_cycles = cycle_count_chkpt_ldst;
 	s->misc_cycles = cycle_count_chkpt_misc;
+	for(i = 0; i < total_insn_classes; ++i)
+		s->cycle_count[i] = cycle_count_chkpt[i];
 }
 
 void calculate_active_energy(struct energy_counter *s)
 {
 	struct energy_counter prev_energy;
+	int i;
 	if(curr_power_model != NULL)
 		curr_power_model->read_active_power(s);
 	read_all_prev_energy(&prev_energy);
@@ -108,6 +126,8 @@ void calculate_active_energy(struct energy_counter *s)
 	s->multiply_energy += prev_energy.multiply_energy;
 	s->ldst_energy += prev_energy.ldst_energy;
 	s->misc_energy += prev_energy.misc_energy;
+	for(i = 0;i < total_insn_classes; ++i)
+		s->insn_energy[i] += prev_energy.insn_energy[i];
 }
 
 void calculate_sleep_energy(struct energy_counter *s)
@@ -118,20 +138,26 @@ void calculate_sleep_energy(struct energy_counter *s)
 
 static void accumulate_energy(struct energy_counter *s)
 {
+	int i;
 	prev_data_proc_insn_energy += s->data_proc_energy;
 	prev_branch_insn_energy += s->branch_energy;
 	prev_multiply_insn_energy += s->multiply_energy;
 	prev_ldst_insn_energy += s->ldst_energy;
 	prev_misc_insn_energy += s->misc_energy;
+	for(i = 0; i < total_insn_classes; ++i)
+		prev_insn_exec_energy[i] = s->insn_energy[i];
 }
 
 void read_all_prev_energy(struct energy_counter *s)
 {
+	int i;
 	s->data_proc_energy = prev_data_proc_insn_energy;
 	s->branch_energy = prev_branch_insn_energy;
 	s->multiply_energy = prev_multiply_insn_energy;
 	s->ldst_energy = prev_ldst_insn_energy;
 	s->misc_energy = prev_misc_insn_energy;
+	for(i = 0;i < total_insn_classes; ++i)
+		s->insn_energy[i] = prev_insn_exec_energy[i];
 }
 
 void start_sleep_cycle_count(void) 
@@ -233,6 +259,7 @@ void monitor_print_variability(Monitor *mon, const QObject *ret)
 void class_info_init(QDict* qdict)
 {
 	class_info = qdict;
+	total_insn_classes = qdict_size(qdict);
 }
 
 QDict* get_class_info_ptr(void)

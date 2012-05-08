@@ -14,6 +14,7 @@ struct cycle_counter
 	uint64_t multiply_cycles;
 	uint64_t ldst_cycles;
 	uint64_t misc_cycles;
+	uint64_t cycle_count[MAX_INSN_CLASSES];
 };
 
 struct variability_instruction_set
@@ -32,6 +33,7 @@ struct energy_counter
 	uint64_t ldst_energy;
 	uint64_t misc_energy;
 	uint64_t sleep_energy;
+	uint64_t insn_energy[MAX_INSN_CLASSES];
 };
 
 

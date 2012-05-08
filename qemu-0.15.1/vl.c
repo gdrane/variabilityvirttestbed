@@ -1077,7 +1077,6 @@ static int parse_variability_file(const char *fname)
 		qdict = qobject_to_qdict(qobj);
 		if(qdict_haskey(qdict, "y")){
 			// Code to add instructions as errorneous or not
-			printf("Yes\n");	
 			entry = qdict_first(qdict);
 			do
 			{

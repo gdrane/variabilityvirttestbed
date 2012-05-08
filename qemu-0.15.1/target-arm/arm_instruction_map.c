@@ -31,6 +31,8 @@ void increment_cycle_counter(void* tbptr, struct variability_instruction_set* s)
 		case MISC_ISN:
 							tb->misc_cycle_count += s->cycle_count;
 							break;
+		default:
+					tb->cycle_count[s->instruction_type - 1] += s->cycle_count;  
 	}
 }
 
