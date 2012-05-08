@@ -37,7 +37,7 @@ struct energy_counter
 };
 
 
-struct variability_instruction_set* insn_map;
+extern struct variability_instruction_set* insn_map;
 extern QDict* class_info;
 extern bool error_pc_enabled, error_icount_enabled;
 extern int error_pc_info[], error_icount_info[];

@@ -4,6 +4,8 @@
 #include "qjson.h"
 #include "qint.h"
 
+struct variability_instruction_set* insn_map = NULL;
+
 uint8_t total_insn_classes = 0;
 
 static uint64_t total_data_proc_cycle_count = 0;

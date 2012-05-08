@@ -3031,7 +3031,7 @@ int main(int argc, char **argv, char **envp)
         }
     }
     loc_set_none();
-	init_instruction_set_map();
+	// init_instruction_set_map();
     /* Open the logfile at this point, if necessary. We can't open the logfile
      * when encountering either of the logging options (-d or -D) because the
      * other one may be encountered later on the command line, changing the

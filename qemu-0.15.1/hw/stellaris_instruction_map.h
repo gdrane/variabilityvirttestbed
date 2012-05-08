@@ -8,6 +8,8 @@ void init_stellaris_instruction_set_map(void);
 void init_stellaris_instruction_set_map(void)
 {
 
+	if(insn_map == NULL)
+		return;
 	get_map_entry("MOV_imm")->cycle_count = 1;
 	get_map_entry("MOV_reg")->cycle_count = 1;
 	get_map_entry("MOVT")->cycle_count = 1;

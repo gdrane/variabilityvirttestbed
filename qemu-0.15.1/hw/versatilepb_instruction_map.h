@@ -7,7 +7,8 @@ void init_versatilepb_instruction_set_map(void);
 
 void init_versatilepb_instruction_set_map(void)
 {
-	insn_map = (struct variability_instruction_set*) arm_instructions;
+	if(insn_map == NULL)
+		return;
 
 	get_map_entry("MOV_imm")->cycle_count = 1;
 	get_map_entry("MOV_reg")->cycle_count = 1;
