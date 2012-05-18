@@ -41,13 +41,16 @@ extern struct variability_instruction_set* insn_map;
 extern QDict* class_info;
 extern bool error_pc_enabled, error_icount_enabled;
 extern int error_pc_info[], error_icount_info[];
+extern bool errors_activated;
 
 void init_instruction_set_map(void);
 void increment_cycle_counter(void* tbptr, struct variability_instruction_set* s);
 struct variability_instruction_set* get_map_entry(const char* instruction);
+uint64_t get_cycle_count(char* insn);
 
 void reset_all_cycle_counters(void);
 void increment_cycle_counters(void* tb);
+void increment_class_cycle_counter(uint8_t insnclass, uint8_t cycle_count); 
 void read_all_cycle_counters(struct cycle_counter *s); 
 void freq_changed_set_chkpt(struct cycle_counter *s);
 void read_all_cycle_counter_chkpts(struct cycle_counter *s);
@@ -64,7 +67,8 @@ void calculate_sleep_energy(struct energy_counter *s);
 void calculate_active_energy(struct energy_counter *s);
 
 // Error stuff
-bool skip_instruction(CPUState* env, TranslationBlock* tb);
+int error_model(CPUState* env, TranslationBlock* tb);
+void error_activate_deactivate(bool val);
 
 // Command Line Parameters Stuff
 void class_info_init(QDict* qdict);
@@ -73,4 +77,6 @@ void update_insn_class_info(const char* class_idx, const char* insn);
 void update_insn_error_info(const char* err_val, const char* insn);
 void error_init_pc(int start_pc, int end_pc);
 void error_init_icount(int start_icount, int end_icount);
+void mem_error_init(QList* qlist);
+void error_regs_init(QList* qlist);
 #endif

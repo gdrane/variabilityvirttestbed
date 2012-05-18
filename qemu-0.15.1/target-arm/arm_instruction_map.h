@@ -19,8 +19,6 @@ void init_arm_instruction_set_map(void);
 void increment_cycle_counter(TranslationBlock* tb, struct variability_instruction_set*s);
 struct variability_instruction_set* get_map_entry(const char* instruction);
 */
-uint64_t get_cycle_count(char* instruction);
-
 extern struct variability_instruction_set arm_instructions [];
 /*
 struct variability_instruction_set arm_instructions [] = {

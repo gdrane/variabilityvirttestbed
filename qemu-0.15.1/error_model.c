@@ -2,7 +2,7 @@
 
 static uint8_t count_exec = 0;
 
-bool skip_instruction(CPUState * env, TranslationBlock* tb)
+int error_model(CPUState * env, TranslationBlock* tb)
 {
 	int i;
 	count_exec ++;
@@ -21,5 +21,5 @@ bool skip_instruction(CPUState * env, TranslationBlock* tb)
 		else if(tb->args[i] == 1)
 				printf(" Immediate Offset: 0x%08x", tb->args[i+1]);
 	}
-	return false;
+	return -1;
 }

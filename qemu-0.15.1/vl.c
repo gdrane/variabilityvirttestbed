@@ -1047,6 +1047,8 @@ extern int update_insn_class_info(const char* idx, const char* insn);
 extern void update_insn_error_info(const char* boolstr, const char* insn);
 extern void error_init_pc(int start_pc, int end_pc);
 extern void error_init_icount(int start_icount, int end_icount);
+extern void mem_error_init(QList * qlist);
+extern void error_regs_init(QList * qlist);
 
 static int parse_variability_file(const char *fname)
 {
@@ -1071,9 +1073,18 @@ static int parse_variability_file(const char *fname)
 	while(!feof(fp))
 	{
 		const QDictEntry *entry;
+		int i;
 		fgets(line, 2000, fp);
-		printf("%s \n", line);
+		for(i = 0;i < 2000; ++i)
+			if(line[i] == '\n') {
+				printf("%s \n", line);
+				break;
+			}
 		qobj = qobject_from_json(line);
+		if(qobj == NULL) {
+			printf("QOBJ is null\n");
+			continue;
+		}
 		qdict = qobject_to_qdict(qobj);
 		if(qdict_haskey(qdict, "y")){
 			// Code to add instructions as errorneous or not
@@ -1093,27 +1104,33 @@ static int parse_variability_file(const char *fname)
 			} while(entry != NULL);
 		} else if(qdict_haskey(qdict, "start_pc") && qdict_haskey(qdict, "end_pc")) {
 					error_init_pc(qdict_get_int(qdict, "start_pc"),
-						qdict_get_int(qdict, "end_pc"));
+					qdict_get_int(qdict, "end_pc"));
 				} else if(qdict_haskey(qdict, "start_icount") && qdict_haskey(qdict, "end_icount")) {
 					error_init_icount(qdict_get_int(qdict, "start_icount"),
-						qdict_get_int(qdict, "end_icount"));
+					qdict_get_int(qdict, "end_icount"));
+			} else if(qdict_haskey(qdict, "error_regs")) {
+				entry = qdict_first(qdict);
+				error_regs_init(qobject_to_qlist(qdict_entry_value(entry)));
+			} else if(qdict_haskey(qdict, "mem_errors")) {
+				entry = qdict_first(qdict);
+				mem_error_init(qobject_to_qlist(qdict_entry_value(entry)));
 			} else {
-			// Code to assign instruction to a particular class
-			entry = qdict_first(qdict);
-			do
-			{
-				const QListEntry * list_entry;
-			 	QList* insn_list = qobject_to_qlist(qdict_entry_value(entry));
-				list_entry = qlist_first(insn_list);
-				while(list_entry != NULL)
+				// Code to assign instruction to a particular class
+				entry = qdict_first(qdict);
+				do
 				{
-					const char* insn = qstring_get_str(qobject_to_qstring(list_entry->value));
-					update_insn_class_info(qdict_entry_key(entry), insn);
-					list_entry = qlist_next(list_entry);
-				}
-				entry = qdict_next(qdict, entry);	
-			} while(entry != NULL);
-		}
+					const QListEntry * list_entry;
+			 		QList* insn_list = qobject_to_qlist(qdict_entry_value(entry));
+					list_entry = qlist_first(insn_list);
+					while(list_entry != NULL)
+					{
+						const char* insn = qstring_get_str(qobject_to_qstring(list_entry->value));
+						update_insn_class_info(qdict_entry_key(entry), insn);
+						list_entry = qlist_next(list_entry);
+					}
+					entry = qdict_next(qdict, entry);	
+				} while(entry != NULL);
+			}
 	}
 	fclose(fp);		
 	return 0;
@@ -3024,7 +3041,9 @@ int main(int argc, char **argv, char **envp)
 					init_instruction_set_map();
 					variability_filename = optarg;
 					parse_variability_file(variability_filename);
+					singlestep = 1;
 				}
+				break;
             default:
                 os_parse_cmd_args(popt->index, optarg);
             }

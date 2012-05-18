@@ -79,8 +79,17 @@ static uint32_t varmod_read(void* opaque, target_phys_addr_t offset)
 		case 0x54: // Upper 32 MISC instruction energy
 					return (uint32_t) (active.misc_energy >> 32);
 
-		case 0x58: // Lower 32 Sleep energy
+		case 0x58: 
+		case 0x5c:
+		case 0x60:
+		case 0x64:
+				    break;
+		case 0x68: // Lower 32 Sleep Energy
 					return (uint32_t) (sleep.sleep_energy);
+		case 0x6c: // Upper 32 Sleep Energy
+					return (uint32_t) (sleep.sleep_energy >> 32);
+		case 0x70:
+					return (uint32_t) errors_activated;
 	}
 
 	return 0;
@@ -88,7 +97,12 @@ static uint32_t varmod_read(void* opaque, target_phys_addr_t offset)
 
 static void varmod_write(void *opaque, target_phys_addr_t offset, uint32_t value)
 {
-	printf(" You cannot write to variability module registers \n");	
+	switch(offset)
+	{
+		case 0x70: 
+					errors_activated = (value & 1);
+					break;
+	}
 }
 
 static CPUReadMemoryFunc* const varmod_readfn[] = {

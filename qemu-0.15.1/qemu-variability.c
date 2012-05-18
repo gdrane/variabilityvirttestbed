@@ -41,11 +41,66 @@ static uint64_t sleep_energy = 0;
 PowerModel *curr_power_model = NULL;
 
 QDict* class_info = NULL;
+QList* error_info_memory= NULL;
+QList* error_info_regs = NULL;
 bool error_pc_enabled = false, error_icount_enabled = false;
 int error_pc_info[2] = {0};
 int error_icount_info[2] = {0};
+bool errors_activated = false;
+
 
 static void accumulate_energy(struct energy_counter *s);
+
+uint64_t get_cycle_count(char* instruction)
+{
+	struct variability_instruction_set* p = get_map_entry(instruction);
+	if(p == NULL)
+	{
+		printf("Illegal instruction sent");
+		return 0;
+	} else if(p->cycle_count == 0)
+		printf("Instruction map not initialized");
+	// TODO(gdrane): Put an exception like illegal instruction to get 
+	// out of here.
+	return p->cycle_count;
+}
+
+void increment_cycle_counter(void* tbptr, struct variability_instruction_set* s)
+{
+	TranslationBlock* tb = (TranslationBlock*) tbptr;
+	//printf("Incrementing cycle counter for current tb\n");
+	if(s == NULL || tb == NULL)
+		return ;
+	else if(s->cycle_count == 0)
+		{
+			// printf("Error\n");
+			return;
+		}
+	/*
+	switch(s->instruction_type)
+	{
+		case DATA_PROC_ISN:
+							tb->data_proc_cycle_count += s->cycle_count;
+							break;
+		case BRANCH_ISN:
+							tb->branch_cycle_count += s->cycle_count;
+							break;
+		case LDST_ISN: 		tb->ldst_cycle_count += s->cycle_count;
+							break;
+		case MULTIPLY_ISN:
+							tb->multiply_cycle_count += s->cycle_count;
+							break;
+		case MISC_ISN:
+							tb->misc_cycle_count += s->cycle_count;
+							break;
+	}*/
+	tb->cycle_count[s->instruction_type - 1] += s->cycle_count;  
+}
+
+void increment_class_cycle_counter(uint8_t insn_class, uint8_t cycle_count)
+{
+	total_cycle_count[insn_class - 1] += cycle_count;
+}
 
 void read_all_cycle_counters(struct cycle_counter *s)
 {
@@ -316,4 +371,19 @@ void error_init_icount(int start_icount, int end_icount)
 	error_icount_enabled = true;
 	error_icount_info[0] = start_icount;
 	error_icount_info[1] = end_icount;
+}
+
+void error_regs_init(QList* qlist)
+{
+	error_info_regs = qlist;
+}
+
+void mem_error_init(QList* qlist)
+{
+	error_info_memory = qlist;
+}
+
+void error_activate_deactivate(bool val)
+{
+	errors_activated = val;
 }

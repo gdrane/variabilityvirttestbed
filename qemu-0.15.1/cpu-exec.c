@@ -547,9 +547,22 @@ int cpu_exec(CPUState *env)
                 }
                 spin_unlock(&tb_lock);
 
-				if(singlestep == 1 && tb->insn_under_exec < MAX_INSTRUCTIONS 
-					&& (!env->exit_request) && skip_instruction(env, tb)) {
-					continue;
+				if(singlestep == 1) {
+					int privmode, replaced_insn;
+					#if defined(TARGET_ARM)
+						if(arm_feature(env, ARM_FEATURE_M)) {
+							privmode = !((env->v7m.exception) && (env->v7m.control & 1));
+					}	else { 
+							privmode = (env->uncached_cpsr & CPSR_M) != ARM_CPU_MODE_USR;
+					}
+					#endif
+					if(!privmode)
+						printf("PRIVMODE: %d\n\n", privmode);
+					if(!privmode && errors_activated && (replaced_insn = error_model(env, tb)) >= 0) {
+						assert(insn_map != NULL);
+						increment_class_cycle_counter(insn_map[replaced_insn].instruction_type, insn_map[replaced_insn].cycle_count);
+						continue;
+					}
 				}
 
                 /* cpu_interrupt might be called while translating the
