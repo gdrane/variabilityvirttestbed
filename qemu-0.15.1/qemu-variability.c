@@ -160,9 +160,14 @@ uint64_t read_sleep_energy(void)
 	return sleep_energy;
 }
 
+// TODO(gdrane) 
+
 void power_model_init(PowerModel* pwr_model)
 {
 	curr_power_model = pwr_model;
+	// TODO(gdrane)
+	// 1. Create a new Bottom Half
+	// 2. Initialize a ptimer with the bottom-half
 }
 
 void do_info_cyclecount(Monitor *mon, QObject **ret_data)

@@ -49,6 +49,11 @@ static uint32_t varmod_read(void* opaque, target_phys_addr_t offset)
 		case 0x24: // Upper 32 Miscellaneous Cycles
 					return (uint32_t) (cy.misc_cycles >> 32);
 
+		case 0x28: // Lower 32 Dynamic Energy
+					return (uint32_t) (active.data_proc_energy + active.branch_energy + active.multiply_energy + active.ldst_energy + active.misc_energy);
+		case 0x2c: // Upper 32 Dynamic Energy
+					return (uint32_t) ((active.data_proc_energy + active.branch_energy + active.multiply_energy + active.ldst_energy + active.misc_energy) >> 32);
+		/*
 		case 0x28: // Lower 32 Data Proc Energy 
 					return (uint32_t) (active.data_proc_energy);
 
@@ -78,9 +83,12 @@ static uint32_t varmod_read(void* opaque, target_phys_addr_t offset)
 		
 		case 0x54: // Upper 32 MISC instruction energy
 					return (uint32_t) (active.misc_energy >> 32);
-
-		case 0x58: // Lower 32 Sleep energy
+		*/
+		case 0x30: // Lower 32 Sleep energy /  Leakage Energy
 					return (uint32_t) (sleep.sleep_energy);
+	
+		case 0x34: // Upper 32 Sleep Energy / Leakage Energy
+					return (uint32_t) (sleep.sleep_energy >> 32);
 	}
 
 	return 0;
