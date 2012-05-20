@@ -8164,7 +8164,7 @@ static void disas_arm_insn(CPUState * env, DisasContext *s)
                     }
                 }
 				// Putting the arg_vector in tb
-				s->tb->args[0] = 0;
+				s->tb->args[0] = 3;
 				s->tb->args[1] = arg_vec;
                 if (insn & (1 << 21)) {
                     /* write back */
@@ -8650,7 +8650,7 @@ static int disas_thumb2_insn(CPUState *env, DisasContext *s, uint16_t insn_hw1)
                     }
                     tcg_gen_addi_i32(addr, addr, 4);
                 }
-                s->tb->args[2] = 0;
+                s->tb->args[2] = 3;
 				s->tb->args[3] = argvec;
 				if (loaded_base) {
                     store_reg(s, rn, loaded_var);
@@ -10442,7 +10442,7 @@ static void disas_thumb_insn(CPUState *env, DisasContext *s)
                 tcg_gen_addi_i32(addr, addr, 4);
             }
         }
-		s->tb->args[2] = 0;
+		s->tb->args[2] = 3;
 		s->tb->args[3] = argvec;
         if ((insn & (1 << rn)) == 0) {
             /* base reg not in list: base register writeback */

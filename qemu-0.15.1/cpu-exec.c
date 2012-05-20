@@ -548,7 +548,7 @@ int cpu_exec(CPUState *env)
                 spin_unlock(&tb_lock);
 
 				if(singlestep == 1) {
-					int privmode, replaced_insn;
+					int privmode = 0, replaced_insn;
 					#if defined(TARGET_ARM)
 						if(arm_feature(env, ARM_FEATURE_M)) {
 							privmode = !((env->v7m.exception) && (env->v7m.control & 1));
