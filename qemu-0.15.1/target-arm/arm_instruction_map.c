@@ -1,36 +1,7 @@
 #include "arm_instruction_map.h"
-void init_arm_instruction_set_map(void)
+void init_instruction_set_map(void)
 {
  	insn_map = (struct variability_instruction_set*)arm_instructions;
-}
-
-void increment_cycle_counter(TranslationBlock* tb, struct variability_instruction_set* s)
-{
-	//printf("Incrementing cycle counter for current tb\n");
-	if(s == NULL || tb == NULL)
-		return ;
-	else if(s->cycle_count == 0)
-		{
-			// printf("Error\n");
-			return;
-		}
-	switch(s->instruction_type)
-	{
-		case DATA_PROC_ISN:
-							tb->data_proc_cycle_count += s->cycle_count;
-							break;
-		case BRANCH_ISN:
-							tb->branch_cycle_count += s->cycle_count;
-							break;
-		case LDST_ISN: 		tb->ldst_cycle_count += s->cycle_count;
-							break;
-		case MULTIPLY_ISN:
-							tb->multiply_cycle_count += s->cycle_count;
-							break;
-		case MISC_ISN:
-							tb->misc_cycle_count += s->cycle_count;
-							break;
-	}
 }
 
 struct variability_instruction_set arm_instructions [INSTRUCTIONS_AVAILABLE] = {
@@ -162,16 +133,4 @@ struct variability_instruction_set* get_map_entry(const char* instruction)
 	return NULL;
 }
 
-uint64_t get_cycle_count(char* instruction)
-{
-	struct variability_instruction_set* p = get_map_entry(instruction);
-	if(p == NULL)
-	{
-		printf("Illegal instruction sent");
-		return 0;
-	} else if(p->cycle_count == 0)
-		printf("Instruction map not initialized");
-	// TODO(gdrane): Put an exception like illegal instruction to get 
-	// out of here.
-	return p->cycle_count;
-}
+

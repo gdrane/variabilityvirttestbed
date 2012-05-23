@@ -238,7 +238,8 @@ int cpu_exec(CPUState *env)
                     /* exit request from the cpu execution loop */
                     ret = env->exception_index;
                     if (ret == EXCP_DEBUG) {
-                        cpu_handle_debug_exception(env);
+                        printf("Hi\n");
+						cpu_handle_debug_exception(env);
                     }
                     break;
                 } else {
@@ -522,9 +523,9 @@ int cpu_exec(CPUState *env)
 #endif
                 }
 #endif /* DEBUG_DISAS || CONFIG_DEBUG_EXEC */
-                spin_lock(&tb_lock);
+				spin_lock(&tb_lock);
                 tb = tb_find_fast(env);
-                /* Note: we do it here to avoid a gcc bug on Mac OS X when
+				/* Note: we do it here to avoid a gcc bug on Mac OS X when
                    doing it in tb_find_slow */
                 if (tb_invalidated_flag) {
                     /* as some TB could have been invalidated because
@@ -545,6 +546,24 @@ int cpu_exec(CPUState *env)
                     tb_add_jump((TranslationBlock *)(next_tb & ~3), next_tb & 3, tb);
                 }
                 spin_unlock(&tb_lock);
+
+				if(singlestep == 1) {
+					int privmode = 0, replaced_insn;
+					#if defined(TARGET_ARM)
+						if(arm_feature(env, ARM_FEATURE_M)) {
+							privmode = !((env->v7m.exception) && (env->v7m.control & 1));
+					}	else { 
+							privmode = (env->uncached_cpsr & CPSR_M) != ARM_CPU_MODE_USR;
+					}
+					#endif
+					if(!privmode)
+						printf("PRIVMODE: %d\n\n", privmode);
+					if(!privmode && errors_activated && (replaced_insn = error_model(env, tb)) >= 0) {
+						assert(insn_map != NULL);
+						increment_class_cycle_counter(insn_map[replaced_insn].instruction_type, insn_map[replaced_insn].cycle_count);
+						continue;
+					}
+				}
 
                 /* cpu_interrupt might be called while translating the
                    TB, but before it is linked into a potentially

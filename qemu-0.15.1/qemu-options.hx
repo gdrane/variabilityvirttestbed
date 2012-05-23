@@ -2431,3 +2431,23 @@ HXCOMM This is the last statement. Insert new options before this line!
 STEXI
 @end table
 ETEXI
+
+DEFHEADING()
+
+DEFHEADING(Variability)
+
+STEXI
+@table @option
+ETEXI
+
+DEF("variability", HAS_ARG, QEMU_OPTION_variability, \
+    "-variability  include path of file that has variability info\n",
+    QEMU_ARCH_ALL)
+
+STEXI
+@item -variability @var{path}
+@findex -variability
+@end table
+ETEXI
+
+

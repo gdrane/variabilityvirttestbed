@@ -70,6 +70,10 @@ typedef struct TranslationBlock TranslationBlock;
 
 #define OPPARAM_BUF_SIZE (OPC_BUF_SIZE * MAX_OPC_PARAM)
 
+// #ifdef VARIABILITY_EXTENSIONS
+#define MAX_INSN_CLASSES 6
+// #endif
+
 extern target_ulong gen_opc_pc[OPC_BUF_SIZE];
 extern uint8_t gen_opc_instr_start[OPC_BUF_SIZE];
 extern uint16_t gen_opc_icount[OPC_BUF_SIZE];
@@ -157,7 +161,7 @@ struct TranslationBlock {
     struct TranslationBlock *jmp_next[2];
     struct TranslationBlock *jmp_first;
     uint32_t icount;
-	//#ifdef VARIABILITY_EXTENSIONS
+	// #ifdef VARIABILITY_EXTENSIONS
 	// Keeps track cpu cycles of data processing intructions executed
 	uint64_t data_proc_cycle_count;
 	// Keeps track of cpu cycles for branch instruction execution
@@ -173,6 +177,10 @@ struct TranslationBlock {
 	// 3. Exception generating instructions
 	// 4. Instruction included in the extended instruction set
 	uint64_t misc_cycle_count;
+	uint64_t cycle_count[MAX_INSN_CLASSES];
+	// Gives the current instruction under execution
+	uint16_t insn_under_exec;
+	int32_t args[8];
 	// #endif
 };
 
@@ -357,6 +365,7 @@ CPUDebugExcpHandler *cpu_set_debug_excp_handler(CPUDebugExcpHandler *handler);
 
 /* vl.c */
 extern int singlestep;
+extern bool allthru_singlestep;
 
 /* cpu-exec.c */
 extern volatile sig_atomic_t exit_request;

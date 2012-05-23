@@ -96,6 +96,7 @@
 #ifdef CONFIG_SDL
 #if defined(__APPLE__) || defined(main)
 #include <SDL.h>
+
 int qemu_main(int argc, char **argv, char **envp);
 int main(int argc, char **argv)
 {
@@ -202,6 +203,9 @@ int win2k_install_hack = 0;
 int rtc_td_hack = 0;
 int usb_enabled = 0;
 int singlestep = 0;
+// #ifdef VARIABILITY_EXTENSIONS
+bool allthru_singlestep = false;
+// #endif
 int smp_cpus = 1;
 int max_cpus = 0;
 int smp_cores = 1;
@@ -1033,6 +1037,106 @@ void pcmcia_info(Monitor *mon)
                        "Empty");
 }
 
+/***********************************************************/
+/* Variability Extensions */
+// #ifdef  VARIABILITY_EXTENSIONS
+extern void init_instruction_set_map(void);
+extern struct variability_instruction_set* get_map_entry(const char*); 
+extern void class_info_init(QDict *qdict);
+extern int update_insn_class_info(const char* idx, const char* insn);
+extern void update_insn_error_info(const char* boolstr, const char* insn);
+extern void error_init_pc(int start_pc, int end_pc);
+extern void error_init_icount(int start_icount, int end_icount);
+extern void mem_error_init(QList * qlist);
+extern void error_regs_init(QList * qlist);
+
+static int parse_variability_file(const char *fname)
+{
+	FILE *fp;
+	char line[2000];
+	QObject *qobj;
+	QDict *qdict;
+	fp = fopen(fname, "r");
+	if(fp == NULL)
+	{
+		perror("Could not open variability file");
+		exit(0);
+	}
+	fgets(line, 2000,fp);
+	printf("%s\n", line);
+	qobj = qobject_from_json(line);
+	assert(qobject_type(qobj) == QTYPE_QDICT);
+	qdict = qobject_to_qdict(qobj);
+	printf("Size of the dict %u\n", qdict_size(qdict));
+	assert(qdict_size(qdict) > 0);
+	class_info_init(qdict);
+	while(!feof(fp))
+	{
+		const QDictEntry *entry;
+		int i;
+		fgets(line, 2000, fp);
+		for(i = 0;i < 2000; ++i)
+			if(line[i] == '\n') {
+				printf("%s \n", line);
+				break;
+			}
+		qobj = qobject_from_json(line);
+		if(qobj == NULL) {
+			printf("QOBJ is null\n");
+			continue;
+		}
+		qdict = qobject_to_qdict(qobj);
+		if(qdict_haskey(qdict, "y")){
+			// Code to add instructions as errorneous or not
+			entry = qdict_first(qdict);
+			do
+			{
+				const QListEntry *list_entry;
+				QList* insn_list = qobject_to_qlist(qdict_entry_value(entry));
+				list_entry = qlist_first(insn_list);
+				while(list_entry != NULL)
+				{
+					const char* insn = qstring_get_str(qobject_to_qstring(list_entry->value));
+					update_insn_error_info(qdict_entry_key(entry), insn);
+					list_entry = qlist_next(list_entry);
+				}
+				entry = qdict_next(qdict, entry);
+			} while(entry != NULL);
+		} else if(qdict_haskey(qdict, "start_pc") && qdict_haskey(qdict, "end_pc")) {
+					error_init_pc(qdict_get_int(qdict, "start_pc"),
+					qdict_get_int(qdict, "end_pc"));
+				} else if(qdict_haskey(qdict, "start_icount") && qdict_haskey(qdict, "end_icount")) {
+					error_init_icount(qdict_get_int(qdict, "start_icount"),
+					qdict_get_int(qdict, "end_icount"));
+			} else if(qdict_haskey(qdict, "error_regs")) {
+				entry = qdict_first(qdict);
+				error_regs_init(qobject_to_qlist(qdict_entry_value(entry)));
+			} else if(qdict_haskey(qdict, "mem_errors")) {
+				entry = qdict_first(qdict);
+				mem_error_init(qobject_to_qlist(qdict_entry_value(entry)));
+			} else {
+				// Code to assign instruction to a particular class
+				entry = qdict_first(qdict);
+				do
+				{
+					const QListEntry * list_entry;
+			 		QList* insn_list = qobject_to_qlist(qdict_entry_value(entry));
+					list_entry = qlist_first(insn_list);
+					while(list_entry != NULL)
+					{
+						const char* insn = qstring_get_str(qobject_to_qstring(list_entry->value));
+						update_insn_class_info(qdict_entry_key(entry), insn);
+						list_entry = qlist_next(list_entry);
+					}
+					entry = qdict_next(qdict, entry);	
+				} while(entry != NULL);
+			}
+	}
+	fclose(fp);		
+	return 0;
+}
+
+// #endif
 /***********************************************************/
 /* machine registration */
 
@@ -2092,6 +2196,10 @@ int main(int argc, char **argv, char **envp)
     const char *trace_file = NULL;
     const char *log_mask = NULL;
     const char *log_file = NULL;
+	
+	// #define VARIABILITY_EXTENSIONS
+	const char *variability_filename;
+	// #endif
 
     atexit(qemu_run_exit_notifiers);
     error_set_progname(argv[0]);
@@ -2481,6 +2589,9 @@ int main(int argc, char **argv, char **envp)
                 break;
             case QEMU_OPTION_singlestep:
                 singlestep = 1;
+				// #ifdef VARIABILITY_EXTENSIONS
+				allthru_singlestep = true;
+				// #endif
                 break;
             case QEMU_OPTION_S:
                 autostart = 0;
@@ -2925,13 +3036,21 @@ int main(int argc, char **argv, char **envp)
                     fclose(fp);
                     break;
                 }
+			case QEMU_OPTION_variability:
+				{
+					init_instruction_set_map();
+					variability_filename = optarg;
+					parse_variability_file(variability_filename);
+					singlestep = 1;
+				}
+				break;
             default:
                 os_parse_cmd_args(popt->index, optarg);
             }
         }
     }
     loc_set_none();
-
+	// init_instruction_set_map();
     /* Open the logfile at this point, if necessary. We can't open the logfile
      * when encountering either of the logging options (-d or -D) because the
      * other one may be encountered later on the command line, changing the

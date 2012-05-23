@@ -186,8 +186,9 @@ static void versatile_init(ram_addr_t ram_size,
     NICInfo *nd;
     int n;
     int done_smc = 0;
+	// #ifdef VARIABILITY_EXTENSIONS
 	init_versatilepb_instruction_set_map();
-    
+    // #endif
 	if (!cpu_model)
         cpu_model = "arm926";
     env = cpu_init(cpu_model);
