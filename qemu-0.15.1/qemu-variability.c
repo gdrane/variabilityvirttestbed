@@ -12,11 +12,13 @@ static uint64_t total_misc_cycle_count = 0;
 
 // Prev energies, not the current one, current is calculated based on the 
 // chpkts and cycle after that  and current frequency
-static uint64_t prev_data_proc_insn_energy = 0;
-static uint64_t prev_branch_insn_energy = 0;
-static uint64_t prev_multiply_insn_energy = 0;
-static uint64_t prev_ldst_insn_energy = 0;
-static uint64_t prev_misc_insn_energy = 0;
+static float64 prev_data_proc_insn_energy = 0;
+static float64 prev_branch_insn_energy = 0;
+static float64 prev_multiply_insn_energy = 0;
+static float64 prev_ldst_insn_energy = 0;
+static float64 prev_misc_insn_energy = 0;
+static float64 prev_leakage_energy = 0;
+static float64 prev_dynamic_energy = 0;
 
 // Cycle count Checkpoint, saved when there is a  change in frequency
 static uint64_t cycle_count_chkpt_data_proc = 0;

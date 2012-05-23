@@ -8,6 +8,12 @@ uint64_t serve_active_power(void *opaque);
 void sleep_start_event(void);
 void sleep_stop_event(uint64_t);
 uint64_t serve_sleep_power(void*);
+uint64_t serve_insn_power(uint32_t);
+
+uint64_t serve_insn_power(uint32_t insn)
+{
+	return insn_map[insn].cycle_count;
+}
 
 void freq_has_changed(uint64_t new_freq)
 {
@@ -52,7 +58,8 @@ static PowerModel first_pwr_model =
 	.read_active_power = serve_active_power,
 	.sleep_start_notify = sleep_start_event,
 	.sleep_stop_notify = sleep_stop_event,
-	.read_sleep_power = serve_sleep_power
+	.read_sleep_power = serve_sleep_power,
+	.insn_power = serve_insn_power
 };
 
 void power_init(void) 

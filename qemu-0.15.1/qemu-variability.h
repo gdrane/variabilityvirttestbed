@@ -29,6 +29,8 @@ struct energy_counter
 	uint64_t ldst_energy;
 	uint64_t misc_energy;
 	uint64_t sleep_energy;
+	// float64 leakage_energy;
+	// float64 dynamic_energy;
 };
 
 struct variability_instruction_set* insn_map;

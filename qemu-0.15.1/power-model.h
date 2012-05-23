@@ -12,6 +12,7 @@ typedef struct {
 	void (*sleep_start_notify) (void);
 	void (*sleep_stop_notify) (uint64_t);
 	uint64_t (*read_sleep_power) (void *);
+	uint64_t (*insn_power) (uint32_t);
 }PowerModel;
 
 void power_init(void);
