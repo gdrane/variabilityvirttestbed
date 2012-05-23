@@ -109,9 +109,7 @@ static uint16_t variability_counters_manip(TranslationBlock* tb, const char* ins
 		return MAX_INSTRUCTIONS;
 	struct variability_instruction_set* s = get_map_entry(instruction);
 	increment_cycle_counter(tb, s);
-	if(s->errorneous == 1)
-		return s - insn_map;
-	return MAX_INSTRUCTIONS;
+	return s - insn_map;
 }
 
 static void no_args(TranslationBlock *tb)

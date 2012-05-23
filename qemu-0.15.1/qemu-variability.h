@@ -44,6 +44,7 @@ extern QList* error_info_memory;
 extern bool error_pc_enabled, error_icount_enabled;
 extern int error_pc_info[], error_icount_info[];
 extern bool errors_activated;
+extern PowerModel * curr_power_model;
 
 void init_instruction_set_map(void);
 void increment_cycle_counter(void* tbptr, struct variability_instruction_set* s);

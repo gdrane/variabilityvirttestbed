@@ -112,6 +112,8 @@ int error_model(CPUState * env, TranslationBlock* tb)
 	//
 	// Execution Errors
 	//
+	// Should return the index number of the replaced instruction, in cases 
+	// where instruction is replaced. Other wise should return -1
 		
 	// Errors due to ambient
 	
