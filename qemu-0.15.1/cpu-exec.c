@@ -549,6 +549,13 @@ int cpu_exec(CPUState *env)
 
 				if(singlestep == 1) {
 					int privmode = 0, replaced_insn;
+					uint64_t insn_energy = 0;
+					if(curr_power_model != NULL) {
+						insn_energy = curr_power_model->insn_power(tb->insn_under_exec);
+						printf("Insn Energy: %llu", insn_energy);
+						// CALL To the BATTERY MODEL HERE!!!
+					
+					}
 					#if defined(TARGET_ARM)
 						if(arm_feature(env, ARM_FEATURE_M)) {
 							privmode = !((env->v7m.exception) && (env->v7m.control & 1));
