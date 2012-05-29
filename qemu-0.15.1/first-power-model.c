@@ -22,6 +22,7 @@ void freq_has_changed(uint64_t new_freq)
 
 uint64_t serve_active_power(void *opaque)
 {
+	int  i;
 	struct cycle_counter cycle_count;
 	struct cycle_counter cycle_count_chkpt;
 	struct energy_counter *s = (struct energy_counter*) opaque;
@@ -32,6 +33,8 @@ uint64_t serve_active_power(void *opaque)
 	s->multiply_energy = cycle_count.multiply_cycles - cycle_count_chkpt.multiply_cycles;
 	s->ldst_energy = cycle_count.ldst_cycles - cycle_count_chkpt.ldst_cycles;
 	s->misc_energy = cycle_count.misc_cycles - cycle_count_chkpt.misc_cycles;
+	for(i = 0;i < total_insn_classes; ++i)
+		s->insn_energy[i] = cycle_count.cycle_count[i] - cycle_count_chkpt.cycle_count[i];
 	return 0;
 }
 

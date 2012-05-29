@@ -155,6 +155,7 @@ void increment_cycle_counters(void* opaque)
 
 void freq_changed_set_chkpt(struct cycle_counter *s)
 {
+	int i;
 	struct energy_counter cur_energy;
 	if(curr_power_model != NULL)
 		curr_power_model->read_active_power(&cur_energy);
@@ -164,8 +165,11 @@ void freq_changed_set_chkpt(struct cycle_counter *s)
 	cycle_count_chkpt_multiply = s->multiply_cycles;
 	cycle_count_chkpt_ldst = s->ldst_cycles;
 	cycle_count_chkpt_misc = s->misc_cycles;
+	for(i = 0; i < total_insn_classes; ++i)
+		cycle_count_chkpt[i] = s->cycle_count[i];
 	if(curr_power_model != NULL)
 		curr_power_model->freq_change_notify(100);
+	
 }
 
 void read_all_cycle_counter_chkpts(struct cycle_counter *s)

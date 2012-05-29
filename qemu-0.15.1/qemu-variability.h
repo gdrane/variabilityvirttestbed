@@ -40,6 +40,7 @@ struct energy_counter
 
 
 extern struct variability_instruction_set* insn_map;
+extern uint8_t total_insn_classes;
 extern QDict* class_info;
 extern QList* error_info_regs;
 extern QList* error_info_memory;

@@ -13,6 +13,7 @@ static void varmod_reset(varmod *s)
 
 static uint32_t varmod_read(void* opaque, target_phys_addr_t offset)
 {
+	int i;
 	struct cycle_counter cy;
 	struct energy_counter active, sleep;
 	calculate_active_energy(&active);
@@ -50,9 +51,19 @@ static uint32_t varmod_read(void* opaque, target_phys_addr_t offset)
 					return (uint32_t) (cy.misc_cycles >> 32);
 
 		case 0x28: // Lower 32 Dynamic Energy
-					return (uint32_t) (active.data_proc_energy + active.branch_energy + active.multiply_energy + active.ldst_energy + active.misc_energy);
+					{
+						uint64_t class_energy_sum = 0;
+						for(i = 0; i < total_insn_classes; ++i)
+							class_energy_sum += active.insn_energy[i];
+						return (uint32_t) (class_energy_sum + active.data_proc_energy + active.branch_energy + active.multiply_energy + active.ldst_energy + active.misc_energy);
+					}
 		case 0x2c: // Upper 32 Dynamic Energy
-					return (uint32_t) ((active.data_proc_energy + active.branch_energy + active.multiply_energy + active.ldst_energy + active.misc_energy) >> 32);
+					{
+						uint64_t class_energy_sum = 0;
+						for(i = 0; i < total_insn_classes; ++i)
+							class_energy_sum += active.insn_energy[i];
+						return (uint32_t) ((class_energy_sum +active.data_proc_energy + active.branch_energy + active.multiply_energy + active.ldst_energy + active.misc_energy) >> 32);
+					}
 		/*
 		case 0x28: // Lower 32 Data Proc Energy 
 					return (uint32_t) (active.data_proc_energy);
